@@ -449,9 +449,10 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingBottom: 40,
   },
-  header: {
+header: {
     paddingHorizontal: 20,
-    paddingTop: 24,
+    // Safely pushes the home header below dynamic islands, notches, and status bars
+    paddingTop: Platform.OS === 'ios' ? 44 : 32, 
     paddingBottom: 8,
   },
   welcomeText: {
@@ -675,7 +676,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 16 : 8,
+    paddingTop: Platform.OS === 'ios' ? 44 : 32,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderColor: '#2d2d2d',
