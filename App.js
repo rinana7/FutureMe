@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -64,13 +64,16 @@ export default function App() {
     }
   ]);
 
-  const nextLetter = {
-    title: sealedLetters[0]?.title || "No upcoming letters",
+  // State to hold the live ticking countdown values
+  const [countdown, setCountdown] = useState({
+    title: "No upcoming letters",
     years: "0",
-    months: "1",
-    days: "2",
-    hours: "5"
-  };
+    months: "0",
+    days: "0",
+    hours: "0",
+    minutes: "0",
+    seconds: "0"
+  });
 
   const tiles = [
     { label: 'Favorites', icon: '⭐', count: 3 },
@@ -78,6 +81,75 @@ export default function App() {
     { label: 'Badges', icon: '🏆', count: 1 },
     { label: 'Archive', icon: '📦', count: 5 },
   ];
+
+  // Helper to check if a letter is unlocked
+  const isLetterUnlocked = (unlockDateStr) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); 
+    const unlockDate = new Date(unlockDateStr);
+    return today >= unlockDate;
+  };
+
+  // --- LIVE TIMER ENGINE EFFECT ---
+  useEffect(() => {
+    const updateTimer = () => {
+      // 1. Filter out already unlocked letters, find only locked future ones
+      const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate));
+      
+      if (lockedLetters.length === 0) {
+        setCountdown(prev => ({ ...prev, title: "All letters unlocked! 🎉" }));
+        return;
+      }
+
+      // 2. Sort them to find the letter unlocking the soonest
+      const sorted = [...lockedLetters].sort((a, b) => new Date(a.unlockDate) - new Date(b.unlockDate));
+      const targetLetter = sorted[0];
+
+      // 3. Math calculation for time delta remaining
+      const now = new Date();
+      const target = new Date(targetLetter.unlockDate);
+      let diffMs = target - now;
+
+      if (diffMs <= 0) {
+        setCountdown(prev => ({ ...prev, title: targetLetter.title, years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" }));
+        return;
+      }
+
+      // Break down total milliseconds cleanly into time units
+      const totalSeconds = Math.floor(diffMs / 1000);
+      const totalMinutes = Math.floor(totalSeconds / 60);
+      const totalHours = Math.floor(totalMinutes / 60);
+      const totalDays = Math.floor(totalHours / 24);
+
+      // Rough year/month calculation approximations for standard UI breakdown
+      const calculatedYears = Math.floor(totalDays / 365);
+      const calculatedMonths = Math.floor((totalDays % 365) / 30.43);
+      const remainingDays = Math.floor((totalDays % 365) % 30.43);
+      
+      const remainingHours = totalHours % 24;
+      const remainingMinutes = totalMinutes % 60;
+      const remainingSeconds = totalSeconds % 60;
+
+      setCountdown({
+        title: targetLetter.title,
+        years: String(calculatedYears),
+        months: String(calculatedMonths),
+        days: String(remainingDays),
+        hours: String(remainingHours),
+        minutes: String(remainingMinutes),
+        seconds: String(remainingSeconds)
+      });
+    };
+
+    // Run calculation once instantly on startup
+    updateTimer();
+
+    // Re-calculate the milliseconds diff precisely every single second
+    const intervalId = setInterval(updateTimer, 1000);
+
+    // Clean up interval when component unmounts
+    return () => clearInterval(intervalId);
+  }, [sealedLetters]);
 
   // Date utilities
   const formatDisplayDate = (dateObj) => {
@@ -126,35 +198,21 @@ export default function App() {
     setCurrentScreen('home');
   };
 
-  // Helper to check if a letter is unlocked
-  const isLetterUnlocked = (unlockDateStr) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); 
-    const unlockDate = new Date(unlockDateStr);
-    return today >= unlockDate;
-  };
-
-  // Triggers when tapping a letter card on the Home Screen
   const handleSelectLetter = (letter) => {
     setSelectedLetter(letter);
     setCurrentScreen('detail');
   };
 
-  // Deletion logic with native confirmation alert
   const handleDeleteLetter = (letterId) => {
     Alert.alert(
       "Discard Letter",
       "Are you absolutely sure you want to permanently delete this letter? This action cannot be undone.",
       [
-        {
-          text: "Cancel",
-          style: "cancel"
-        },
+        { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            // Filter out the deleted letter from state
             const updatedLetters = sealedLetters.filter(letter => letter.id !== letterId);
             setSealedLetters(updatedLetters);
             setCurrentScreen('home');
@@ -177,6 +235,7 @@ export default function App() {
             <Text style={styles.taglineText}>✨ Write today. Discover tomorrow.</Text>
           </View>
 
+          {/* DYNAMIC REAL-TIME HERO COUNTDOWN CARD */}
           <View style={styles.heroContainer}>
             <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
               <View style={styles.heroHeader}>
@@ -186,14 +245,16 @@ export default function App() {
                 </View>
               </View>
               
-              <Text style={styles.heroTitle}>{nextLetter.title}</Text>
+              <Text style={styles.heroTitle}>{countdown.title}</Text>
               
               <View style={styles.countdownRow}>
                 {[
-                  { label: 'Years', val: nextLetter.years },
-                  { label: 'Months', val: nextLetter.months },
-                  { label: 'Days', val: nextLetter.days },
-                  { label: 'Hours', val: nextLetter.hours },
+                  { label: 'Yrs', val: countdown.years },
+                  { label: 'Mos', val: countdown.months },
+                  { label: 'Days', val: countdown.days },
+                  { label: 'Hrs', val: countdown.hours },
+                  { label: 'Min', val: countdown.minutes },
+                  { label: 'Sec', val: countdown.seconds },
                 ].map((item, index) => (
                   <View key={index} style={styles.timeBox}>
                     <Text style={styles.timeVal}>{item.val}</Text>
@@ -286,7 +347,7 @@ export default function App() {
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <Text style={styles.createTitle}>New Letter</Text>
-            <View style={{ width: 60 }} /> 
+            <View style={{ width: 80 }} /> 
           </View>
 
           <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
@@ -416,8 +477,6 @@ export default function App() {
             <Text style={styles.backButtonText}>⬅ Back</Text>
           </TouchableOpacity>
           <Text style={styles.createTitle}>Letter Vault</Text>
-          
-          {/* TRASH CAN DISCARD BUTTON IN TOP RIGHT */}
           <TouchableOpacity onPress={() => handleDeleteLetter(selectedLetter.id)}>
             <Text style={styles.trashText}>🗑️ Discard</Text>
           </TouchableOpacity>
@@ -549,17 +608,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d2d2d',
     borderRadius: 12,
     paddingVertical: 8,
-    marginHorizontal: 4,
+    marginHorizontal: 2, // Margins tweaked slightly to accommodate the extra grid boxes neatly
     alignItems: 'center',
   },
   timeVal: {
     color: '#ffffff',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: '700',
   },
   timeLabel: {
     color: '#888888',
-    fontSize: 10,
+    fontSize: 9,
     textTransform: 'uppercase',
     marginTop: 2,
   },
@@ -700,7 +759,7 @@ const styles = StyleSheet.create({
   },
   
   // --- CREATE/DETAIL HEADER ---
-createHeader: {
+  createHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
