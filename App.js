@@ -481,8 +481,8 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 44 : 32, 
-    paddingBottom: 8,
+    paddingTop: Platform.OS === 'ios' ? 64 : 48, 
+    paddingBottom: 12,
   },
   welcomeText: {
     fontSize: 14,
@@ -700,13 +700,13 @@ const styles = StyleSheet.create({
   },
   
   // --- CREATE/DETAIL HEADER ---
-  createHeader: {
+createHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 44 : 32,
-    paddingBottom: 16,
+    paddingTop: Platform.OS === 'ios' ? 64 : 48,
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderColor: '#2d2d2d',
   },
