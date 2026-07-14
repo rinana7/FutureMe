@@ -13,17 +13,53 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
+// Define our beautiful Stationery Themes
+const THEMES = {
+  classic: {
+    name: "Classic Slate",
+    bg: "#1e1e1e",
+    border: "#2d2d2d",
+    text: "#e0e0e0",
+    accent: "#bb86fc",
+    fontStyle: "normal",
+  },
+  parchment: {
+    name: "Vintage Parchment",
+    bg: "#2c251e",
+    border: "#c3a380",
+    text: "#f4ebd0",
+    accent: "#c3a380",
+    fontStyle: "italic",
+  },
+  neon: {
+    name: "Cyberpunk Neon",
+    bg: "#0c0214",
+    border: "#ff007f",
+    text: "#00f0ff",
+    accent: "#ff007f",
+    fontStyle: "normal",
+  },
+  moss: {
+    name: "Forest Moss",
+    bg: "#141c16",
+    border: "#81b29a",
+    text: "#f4f1de",
+    accent: "#81b29a",
+    fontStyle: "normal",
+  }
+};
+
 export default function App() {
   // Navigation State: 'home', 'create', or 'detail'
   const [currentScreen, setCurrentScreen] = useState('home');
   const [selectedLetter, setSelectedLetter] = useState(null);
 
-// Form Input States
+  // Form Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
-  // Dynamically sets default to a clean, universally accepted ISO string right now
   const [unlockInput, setUnlockInput] = useState(new Date().toISOString().split('T')[0]); 
   const [categoryInput, setCategoryInput] = useState('Personal');
+  const [themeInput, setThemeInput] = useState('classic'); // Default theme selection
 
   // Preset Picker UI States
   const [showDropdown, setShowDropdown] = useState(false);
@@ -33,13 +69,14 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
 
-  // Dynamic Letters Database State (Using strict YYYY-MM-DD formats to prevent mobile NaN errors)
+  // Dynamic Letters Database State with built-in Themes
   const [sealedLetters, setSealedLetters] = useState([
     { 
       id: 1, 
       title: "My Goals for this Summer", 
       unlockDate: "2026-08-31", 
       category: "Personal",
+      theme: "moss",
       content: "Hey future self! Did you end up going on that road trip? Did you finish learning React Native? I hope you had an amazing summer and didn't spend the whole time playing video games. Write down what actually happened!"
     },
     { 
@@ -47,6 +84,7 @@ export default function App() {
       title: "Message to Me in 5 Years", 
       unlockDate: "2031-07-14", 
       category: "Future",
+      theme: "parchment",
       content: "Hello from 2026! You are officially 5 years older now. Are you working at your dream job? Are you still drinking way too much iced coffee? I hope you are happy, healthy, and still curious."
     },
     { 
@@ -54,6 +92,7 @@ export default function App() {
       title: "Advice for College Entry", 
       unlockDate: "2027-09-01", 
       category: "School",
+      theme: "classic",
       content: "College is starting! Take a deep breath. You belong here. Work hard, make good friends, and remember to call your family."
     },
     {
@@ -61,6 +100,7 @@ export default function App() {
       title: "Note to self (Unlocked!)",
       unlockDate: "2026-01-01", 
       category: "Instant",
+      theme: "neon",
       content: "This is a letter from the past that you can read right now because its unlock date has already passed. Pretty cool, right?!"
     }
   ]);
@@ -83,7 +123,7 @@ export default function App() {
     { label: 'Archive', icon: '📦', count: 5 },
   ];
 
-// Helper to check if a letter is unlocked (Manual safe comparison)
+  // Helper to check if a letter is unlocked
   const isLetterUnlocked = (unlockDateStr) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
@@ -95,7 +135,7 @@ export default function App() {
     return today >= unlockDate;
   };
 
-// Helper to format YYYY-MM-DD into a pretty UI string (e.g., "Jul 14, 2031")
+  // Helper to format YYYY-MM-DD into a pretty UI string
   const formatDisplayString = (dateStr) => {
     const parts = dateStr.split('-');
     const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
@@ -106,10 +146,9 @@ export default function App() {
     });
   };
 
-// --- BULLETPROOF LIVE TIMER ENGINE EFFECT ---
+  // --- BULLETPROOF LIVE TIMER ENGINE EFFECT ---
   useEffect(() => {
     const updateTimer = () => {
-      // 1. Filter out already unlocked letters, find only locked future ones
       const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate));
       
       if (lockedLetters.length === 0) {
@@ -117,9 +156,7 @@ export default function App() {
         return;
       }
 
-      // 2. Sort them to find the letter unlocking the soonest
       const sorted = [...lockedLetters].sort((a, b) => {
-        // Safe manual parse helper for sorting
         const parseDateSafely = (dateStr) => {
           const parts = dateStr.split('-');
           return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
@@ -130,16 +167,12 @@ export default function App() {
       const targetLetter = sorted[0];
       if (!targetLetter || !targetLetter.unlockDate) return;
 
-      // 3. Robust manual date extraction to bypass all native mobile parser bugs
       const now = new Date();
-      
-      // Split "YYYY-MM-DD" safely and convert to local integers
       const dateParts = targetLetter.unlockDate.split('-');
       const year = parseInt(dateParts[0], 10);
-      const monthIndex = parseInt(dateParts[1], 10) - 1; // JS months are 0-11
+      const monthIndex = parseInt(dateParts[1], 10) - 1;
       const day = parseInt(dateParts[2], 10);
       
-      // Instantiate target date locally at exactly midnight
       const target = new Date(year, monthIndex, day, 0, 0, 0, 0);
       let diffMs = target - now;
 
@@ -151,13 +184,11 @@ export default function App() {
         return;
       }
 
-      // Break down total milliseconds cleanly into time units
       const totalSeconds = Math.floor(diffMs / 1000);
       const totalMinutes = Math.floor(totalSeconds / 60);
       const totalHours = Math.floor(totalMinutes / 60);
       const totalDays = Math.floor(totalHours / 24);
 
-      // Breakdown calculations
       const calculatedYears = Math.floor(totalDays / 365);
       const calculatedMonths = Math.floor((totalDays % 365) / 30.43);
       const remainingDays = Math.floor((totalDays % 365) % 30.43);
@@ -177,19 +208,13 @@ export default function App() {
       });
     };
 
-    // Run calculation once instantly on startup
     updateTimer();
-
-    // Re-calculate precisely every single second
     const intervalId = setInterval(updateTimer, 1000);
-
-    // Clean up interval when component unmounts
     return () => clearInterval(intervalId);
   }, [sealedLetters]);
 
   // Date utilities for calendar selection
   const formatDisplayDate = (dateObj) => {
-    // Returns YYYY-MM-DD to save safely in database
     const offset = dateObj.getTimezoneOffset();
     const correctedDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
     return correctedDate.toISOString().split('T')[0];
@@ -222,6 +247,7 @@ export default function App() {
       title: titleInput,
       unlockDate: unlockInput,
       category: categoryInput,
+      theme: themeInput, // Save the custom theme selection
       content: contentInput || "No content written in this letter.",
     };
 
@@ -229,6 +255,7 @@ export default function App() {
     
     setTitleInput('');
     setContentInput('');
+    setThemeInput('classic');
     setActivePreset('Custom');
     setCurrentScreen('home');
   };
@@ -452,6 +479,30 @@ export default function App() {
               </View>
             )}
 
+            {/* CUSTOM STATIONERY THEME SELECTOR */}
+            <Text style={styles.label}>Stationery Theme</Text>
+            <View style={styles.themeSelectorContainer}>
+              {Object.keys(THEMES).map((key) => {
+                const theme = THEMES[key];
+                const isSelected = themeInput === key;
+                return (
+                  <TouchableOpacity
+                    key={key}
+                    style={[
+                      styles.themeCard,
+                      { backgroundColor: theme.bg, borderColor: isSelected ? '#ffffff' : theme.border }
+                    ]}
+                    onPress={() => setThemeInput(key)}
+                  >
+                    <Text style={[styles.themeCardText, { color: theme.text, fontStyle: theme.fontStyle }]}>
+                      {theme.name}
+                    </Text>
+                    {isSelected && <Text style={styles.themeChecked}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
             <View style={styles.metaRow}>
               <View style={styles.metaCol}>
                 <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
@@ -504,12 +555,14 @@ export default function App() {
   // --- SCREEN 3: DETAIL SCREEN (LOCKED or UNLOCKED) ---
   if (currentScreen === 'detail' && selectedLetter) {
     const unlocked = isLetterUnlocked(selectedLetter.unlockDate);
+    // Fetch theme settings with a safety fallback to classic
+    const activeTheme = THEMES[selectedLetter.theme] || THEMES.classic;
 
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.createHeader}>
+      <SafeAreaView style={[styles.container, unlocked && { backgroundColor: activeTheme.bg }]}>
+        <View style={[styles.createHeader, unlocked && { borderColor: activeTheme.border }]}>
           <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-            <Text style={styles.backButtonText}>⬅ Back</Text>
+            <Text style={[styles.backButtonText, unlocked && { color: activeTheme.accent }]}>⬅ Back</Text>
           </TouchableOpacity>
           <Text style={styles.createTitle}>Letter Vault</Text>
           <TouchableOpacity onPress={() => handleDeleteLetter(selectedLetter.id)}>
@@ -518,19 +571,26 @@ export default function App() {
         </View>
 
         {unlocked ? (
-          /* UNLOCKED VIEW: READ THE LETTER */
+          /* UNLOCKED VIEW: READ THE THEMED LETTER */
           <ScrollView contentContainerStyle={styles.detailContainer}>
             <View style={styles.unlockedHeader}>
-              <View style={styles.unlockedCategoryBadge}>
-                <Text style={styles.unlockedCategoryText}>{selectedLetter.category}</Text>
+              <View style={[styles.unlockedCategoryBadge, { backgroundColor: activeTheme.accent + '25' }]}>
+                <Text style={[styles.unlockedCategoryText, { color: activeTheme.accent }]}>
+                  {selectedLetter.category}
+                </Text>
               </View>
               <Text style={styles.unlockedDateText}>Unsealed on {formatDisplayString(selectedLetter.unlockDate)}</Text>
             </View>
 
             <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
             
-            <View style={styles.letterPaper}>
-              <Text style={styles.letterPaperText}>{selectedLetter.content}</Text>
+            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}>
+              <Text style={[
+                styles.letterPaperText, 
+                { color: activeTheme.text, fontStyle: activeTheme.fontStyle }
+              ]}>
+                {selectedLetter.content}
+              </Text>
             </View>
           </ScrollView>
         ) : (
@@ -553,6 +613,11 @@ export default function App() {
               
               <Text style={styles.lockDetailsLabel}>CATEGORY</Text>
               <Text style={styles.lockDetailsValue}>{selectedLetter.category}</Text>
+
+              <View style={styles.lockedSeparator} />
+              
+              <Text style={styles.lockDetailsLabel}>STATIONERY THEME</Text>
+              <Text style={styles.lockDetailsValue}>🎨 {activeTheme.name}</Text>
             </View>
 
             <Text style={styles.lockedTagline}>⏳ Access will be granted automatically on release day.</Text>
@@ -916,6 +981,32 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
+  // --- THEME SELECTOR GRID ---
+  themeSelectorContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+  },
+  themeCard: {
+    width: '48%',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  themeCardText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  themeChecked: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '700',
+  },
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -987,13 +1078,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   unlockedCategoryBadge: {
-    backgroundColor: 'rgba(187, 134, 252, 0.15)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
   },
   unlockedCategoryText: {
-    color: '#bb86fc',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1008,15 +1097,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   letterPaper: {
-    backgroundColor: '#1e1e1e',
     borderWidth: 1,
-    borderColor: '#2d2d2d',
     borderRadius: 16,
     padding: 20,
     minHeight: 250,
   },
   letterPaperText: {
-    color: '#e0e0e0',
     fontSize: 16,
     lineHeight: 26,
   },
