@@ -18,10 +18,11 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [selectedLetter, setSelectedLetter] = useState(null);
 
-  // Form Input States
+// Form Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
-  const [unlockInput, setUnlockInput] = useState('Dec 31, 2026'); 
+  // Dynamically sets default to a clean, universally accepted ISO string right now
+  const [unlockInput, setUnlockInput] = useState(new Date().toISOString().split('T')[0]); 
   const [categoryInput, setCategoryInput] = useState('Personal');
 
   // Preset Picker UI States
@@ -32,33 +33,33 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
 
-  // Dynamic Letters Database State
+  // Dynamic Letters Database State (Using strict YYYY-MM-DD formats to prevent mobile NaN errors)
   const [sealedLetters, setSealedLetters] = useState([
     { 
       id: 1, 
       title: "My Goals for this Summer", 
-      unlockDate: "Aug 31, 2026", 
+      unlockDate: "2026-08-31", 
       category: "Personal",
       content: "Hey future self! Did you end up going on that road trip? Did you finish learning React Native? I hope you had an amazing summer and didn't spend the whole time playing video games. Write down what actually happened!"
     },
     { 
       id: 2, 
       title: "Message to Me in 5 Years", 
-      unlockDate: "Jul 14, 2031", 
+      unlockDate: "2031-07-14", 
       category: "Future",
       content: "Hello from 2026! You are officially 5 years older now. Are you working at your dream job? Are you still drinking way too much iced coffee? I hope you are happy, healthy, and still curious."
     },
     { 
       id: 3, 
       title: "Advice for College Entry", 
-      unlockDate: "Sep 1, 2027", 
+      unlockDate: "2027-09-01", 
       category: "School",
       content: "College is starting! Take a deep breath. You belong here. Work hard, make good friends, and remember to call your family."
     },
     {
       id: 4,
       title: "Note to self (Unlocked!)",
-      unlockDate: "Jan 1, 2026", 
+      unlockDate: "2026-01-01", 
       category: "Instant",
       content: "This is a letter from the past that you can read right now because its unlock date has already passed. Pretty cool, right?!"
     }
@@ -82,15 +83,30 @@ export default function App() {
     { label: 'Archive', icon: '📦', count: 5 },
   ];
 
-  // Helper to check if a letter is unlocked
+// Helper to check if a letter is unlocked (Manual safe comparison)
   const isLetterUnlocked = (unlockDateStr) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
-    const unlockDate = new Date(unlockDateStr);
+    
+    const parts = unlockDateStr.split('-');
+    const unlockDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    unlockDate.setHours(0, 0, 0, 0);
+
     return today >= unlockDate;
   };
 
-  // --- LIVE TIMER ENGINE EFFECT ---
+// Helper to format YYYY-MM-DD into a pretty UI string (e.g., "Jul 14, 2031")
+  const formatDisplayString = (dateStr) => {
+    const parts = dateStr.split('-');
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  };
+
+// --- BULLETPROOF LIVE TIMER ENGINE EFFECT ---
   useEffect(() => {
     const updateTimer = () => {
       // 1. Filter out already unlocked letters, find only locked future ones
@@ -102,16 +118,36 @@ export default function App() {
       }
 
       // 2. Sort them to find the letter unlocking the soonest
-      const sorted = [...lockedLetters].sort((a, b) => new Date(a.unlockDate) - new Date(b.unlockDate));
+      const sorted = [...lockedLetters].sort((a, b) => {
+        // Safe manual parse helper for sorting
+        const parseDateSafely = (dateStr) => {
+          const parts = dateStr.split('-');
+          return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+        };
+        return parseDateSafely(a.unlockDate) - parseDateSafely(b.unlockDate);
+      });
+      
       const targetLetter = sorted[0];
+      if (!targetLetter || !targetLetter.unlockDate) return;
 
-      // 3. Math calculation for time delta remaining
+      // 3. Robust manual date extraction to bypass all native mobile parser bugs
       const now = new Date();
-      const target = new Date(targetLetter.unlockDate);
+      
+      // Split "YYYY-MM-DD" safely and convert to local integers
+      const dateParts = targetLetter.unlockDate.split('-');
+      const year = parseInt(dateParts[0], 10);
+      const monthIndex = parseInt(dateParts[1], 10) - 1; // JS months are 0-11
+      const day = parseInt(dateParts[2], 10);
+      
+      // Instantiate target date locally at exactly midnight
+      const target = new Date(year, monthIndex, day, 0, 0, 0, 0);
       let diffMs = target - now;
 
       if (diffMs <= 0) {
-        setCountdown(prev => ({ ...prev, title: targetLetter.title, years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" }));
+        setCountdown({ 
+          title: targetLetter.title, 
+          years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" 
+        });
         return;
       }
 
@@ -121,7 +157,7 @@ export default function App() {
       const totalHours = Math.floor(totalMinutes / 60);
       const totalDays = Math.floor(totalHours / 24);
 
-      // Rough year/month calculation approximations for standard UI breakdown
+      // Breakdown calculations
       const calculatedYears = Math.floor(totalDays / 365);
       const calculatedMonths = Math.floor((totalDays % 365) / 30.43);
       const remainingDays = Math.floor((totalDays % 365) % 30.43);
@@ -144,20 +180,19 @@ export default function App() {
     // Run calculation once instantly on startup
     updateTimer();
 
-    // Re-calculate the milliseconds diff precisely every single second
+    // Re-calculate precisely every single second
     const intervalId = setInterval(updateTimer, 1000);
 
     // Clean up interval when component unmounts
     return () => clearInterval(intervalId);
   }, [sealedLetters]);
 
-  // Date utilities
+  // Date utilities for calendar selection
   const formatDisplayDate = (dateObj) => {
-    return dateObj.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    // Returns YYYY-MM-DD to save safely in database
+    const offset = dateObj.getTimezoneOffset();
+    const correctedDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
+    return correctedDate.toISOString().split('T')[0];
   };
 
   const setDateFromPreset = (daysToAdd, label) => {
@@ -314,7 +349,7 @@ export default function App() {
                       <View>
                         <Text style={styles.letterTitle}>{letter.title}</Text>
                         <Text style={styles.letterSubtitle}>
-                          {unlocked ? "Unlocked! Ready to read" : `Unlocks on ${letter.unlockDate}`}
+                          {unlocked ? "Unlocked! Ready to read" : `Unlocks on ${formatDisplayString(letter.unlockDate)}`}
                         </Text>
                       </View>
                     </View>
@@ -368,7 +403,7 @@ export default function App() {
               onPress={() => setShowDropdown(!showDropdown)}
             >
               <Text style={styles.dropdownSelectorText}>
-                📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({unlockInput})
+                📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({formatDisplayString(unlockInput)})
               </Text>
               <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
             </TouchableOpacity>
@@ -422,9 +457,9 @@ export default function App() {
                 <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
                 <TextInput
                   style={styles.metaInput}
-                  value={unlockInput}
+                  value={formatDisplayString(unlockInput)}
                   editable={false} 
-                  placeholder="Select via dropdown above"
+                  placeholder="Select via dropdown"
                   placeholderTextColor="#555"
                 />
               </View>
@@ -489,7 +524,7 @@ export default function App() {
               <View style={styles.unlockedCategoryBadge}>
                 <Text style={styles.unlockedCategoryText}>{selectedLetter.category}</Text>
               </View>
-              <Text style={styles.unlockedDateText}>Unsealed on {selectedLetter.unlockDate}</Text>
+              <Text style={styles.unlockedDateText}>Unsealed on {formatDisplayString(selectedLetter.unlockDate)}</Text>
             </View>
 
             <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
@@ -512,7 +547,7 @@ export default function App() {
 
             <View style={styles.lockDetailsCard}>
               <Text style={styles.lockDetailsLabel}>DESTINATION DATE</Text>
-              <Text style={styles.lockDetailsValue}>{selectedLetter.unlockDate}</Text>
+              <Text style={styles.lockDetailsValue}>{formatDisplayString(selectedLetter.unlockDate)}</Text>
               
               <View style={styles.lockedSeparator} />
               
@@ -608,7 +643,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#2d2d2d',
     borderRadius: 12,
     paddingVertical: 8,
-    marginHorizontal: 2, // Margins tweaked slightly to accommodate the extra grid boxes neatly
+    marginHorizontal: 2, 
     alignItems: 'center',
   },
   timeVal: {
