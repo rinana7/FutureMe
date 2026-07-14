@@ -13,7 +13,9 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function App() {
+  // Navigation State: 'home', 'create', or 'detail'
   const [currentScreen, setCurrentScreen] = useState('home');
+  const [selectedLetter, setSelectedLetter] = useState(null);
 
   // Form Input States
   const [titleInput, setTitleInput] = useState('');
@@ -29,10 +31,36 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
 
+  // Dynamic Letters Database State (with a mix of locked and unlocked letters for testing!)
   const [sealedLetters, setSealedLetters] = useState([
-    { id: 1, title: "My Goals for this Summer", unlockDate: "Aug 31, 2026", category: "Personal" },
-    { id: 2, title: "Message to Me in 5 Years", unlockDate: "Jul 14, 2031", category: "Future" },
-    { id: 3, title: "Advice for College Entry", unlockDate: "Sep 1, 2027", category: "School" },
+    { 
+      id: 1, 
+      title: "My Goals for this Summer", 
+      unlockDate: "Aug 31, 2026", 
+      category: "Personal",
+      content: "Hey future self! Did you end up going on that road trip? Did you finish learning React Native? I hope you had an amazing summer and didn't spend the whole time playing video games. Write down what actually happened!"
+    },
+    { 
+      id: 2, 
+      title: "Message to Me in 5 Years", 
+      unlockDate: "Jul 14, 2031", 
+      category: "Future",
+      content: "Hello from 2026! You are officially 5 years older now. Are you working at your dream job? Are you still drinking way too much iced coffee? I hope you are happy, healthy, and still curious."
+    },
+    { 
+      id: 3, 
+      title: "Advice for College Entry", 
+      unlockDate: "Sep 1, 2027", 
+      category: "School",
+      content: "College is starting! Take a deep breath. You belong here. Work hard, make good friends, and remember to call your family."
+    },
+    {
+      id: 4,
+      title: "Note to self (Unlocked!)",
+      unlockDate: "Jan 1, 2026", // Already passed!
+      category: "Instant",
+      content: "This is a letter from the past that you can read right now because its unlock date has already passed. Pretty cool, right?!"
+    }
   ]);
 
   const nextLetter = {
@@ -50,7 +78,7 @@ export default function App() {
     { label: 'Archive', icon: '📦', count: 5 },
   ];
 
-  // Helper helper to format dates beautifully
+  // Date utilities
   const formatDisplayDate = (dateObj) => {
     return dateObj.toLocaleDateString('en-US', {
       month: 'short',
@@ -59,7 +87,6 @@ export default function App() {
     });
   };
 
-  // Triggers when a preset button is tapped
   const setDateFromPreset = (daysToAdd, label) => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysToAdd);
@@ -70,11 +97,8 @@ export default function App() {
     setShowDropdown(false);
   };
 
-  // Triggers when a user picks a date from the native calendar
   const onCalendarChange = (event, selectedDate) => {
-    // Hide calendar window for Android immediate response
     if (Platform.OS === 'android') setShowCalendar(false);
-
     if (selectedDate) {
       setSelectedRawDate(selectedDate);
       setUnlockInput(formatDisplayDate(selectedDate));
@@ -90,6 +114,7 @@ export default function App() {
       title: titleInput,
       unlockDate: unlockInput,
       category: categoryInput,
+      content: contentInput || "No content written in this letter.",
     };
 
     setSealedLetters([newLetter, ...sealedLetters]); 
@@ -98,6 +123,20 @@ export default function App() {
     setContentInput('');
     setActivePreset('Custom');
     setCurrentScreen('home');
+  };
+
+  // Helper to check if a letter is unlocked
+  const isLetterUnlocked = (unlockDateStr) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Clear time for accurate day comparison
+    const unlockDate = new Date(unlockDateStr);
+    return today >= unlockDate;
+  };
+
+  // Triggers when tapping a letter card on the Home Screen
+  const handleSelectLetter = (letter) => {
+    setSelectedLetter(letter);
+    setCurrentScreen('detail');
   };
 
   // --- SCREEN 1: HOME DASHBOARD ---
@@ -174,20 +213,32 @@ export default function App() {
             </View>
 
             <View style={styles.lettersList}>
-              {sealedLetters.map((letter) => (
-                <TouchableOpacity key={letter.id} style={styles.letterCard} activeOpacity={0.7}>
-                  <View style={styles.letterLeft}>
-                    <Text style={styles.lockIcon}>🔒</Text>
-                    <View>
-                      <Text style={styles.letterTitle}>{letter.title}</Text>
-                      <Text style={styles.letterSubtitle}>Unlocks on {letter.unlockDate}</Text>
+              {sealedLetters.map((letter) => {
+                const unlocked = isLetterUnlocked(letter.unlockDate);
+                return (
+                  <TouchableOpacity 
+                    key={letter.id} 
+                    style={styles.letterCard} 
+                    activeOpacity={0.7}
+                    onPress={() => handleSelectLetter(letter)}
+                  >
+                    <View style={styles.letterLeft}>
+                      <Text style={styles.lockIcon}>{unlocked ? '🔓' : '🔒'}</Text>
+                      <View>
+                        <Text style={styles.letterTitle}>{letter.title}</Text>
+                        <Text style={styles.letterSubtitle}>
+                          {unlocked ? "Unlocked! Ready to read" : `Unlocks on ${letter.unlockDate}`}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                  <View style={styles.categoryBadge}>
-                    <Text style={styles.categoryText}>{letter.category}</Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View style={unlocked ? styles.unlockedBadge : styles.categoryBadge}>
+                      <Text style={unlocked ? styles.unlockedBadgeText : styles.categoryText}>
+                        {letter.category}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           </View>
 
@@ -197,141 +248,197 @@ export default function App() {
   }
 
   // --- SCREEN 2: CREATE LETTER SCREEN ---
-  return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={{ flex: 1 }}
-      >
-        <View style={styles.createHeader}>
-          <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </TouchableOpacity>
-          <Text style={styles.createTitle}>New Letter</Text>
-          <View style={{ width: 60 }} /> 
-        </View>
-
-        <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
-          
-          {/* TITLE INPUT */}
-          <Text style={styles.label}>To my future self...</Text>
-          <TextInput
-            style={styles.textInputTitle}
-            placeholder="Give your letter a title"
-            placeholderTextColor="#555"
-            value={titleInput}
-            onChangeText={setTitleInput}
-          />
-
-          {/* DYNAMIC DROP-DOWN DATE SELECTOR */}
-          <Text style={styles.label}>When should this unlock?</Text>
-          
-          <TouchableOpacity 
-            style={styles.dropdownSelector} 
-            activeOpacity={0.8}
-            onPress={() => setShowDropdown(!showDropdown)}
-          >
-            <Text style={styles.dropdownSelectorText}>
-              📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({unlockInput})
-            </Text>
-            <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
-          </TouchableOpacity>
-
-          {/* DROPDOWN OPTIONS MENU */}
-          {showDropdown && (
-            <View style={styles.dropdownMenu}>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(1, 'Tomorrow')}>
-                <Text style={styles.dropdownItemText}>🌅 Tomorrow</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(3, '3 Days')}>
-                <Text style={styles.dropdownItemText}>⏳ In 3 Days</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(7, '1 Week')}>
-                <Text style={styles.dropdownItemText}>📅 In 1 Week</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.dropdownItem} 
-                onPress={() => {
-                  setShowDropdown(false);
-                  setShowCalendar(true); // Open system calendar window!
-                }}
-              >
-                <Text style={styles.dropdownItemText}>📆 Open Calendar Visual Picker...</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* NATIVE SYSTEM CALENDAR MOUNT */}
-          {showCalendar && (
-            <View style={styles.calendarWrapper}>
-              {Platform.OS === 'ios' && (
-                <View style={styles.iosCalendarHeader}>
-                  <Text style={styles.iosCalendarTitle}>Select Unlock Date</Text>
-                  <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                    <Text style={styles.iosDoneText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-              <DateTimePicker
-                value={selectedRawDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                minimumDate={new Date()} // Prevent sealing letters in the past!
-                onChange={onCalendarChange}
-                themeVariant="dark"
-              />
-            </View>
-          )}
-
-          {/* METADATA SUMMARY */}
-          <View style={styles.metaRow}>
-            <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
-              <TextInput
-                style={styles.metaInput}
-                value={unlockInput}
-                editable={false} // Automatically synced to calendar selection now
-                placeholder="Select via dropdown above"
-                placeholderTextColor="#555"
-              />
-            </View>
-            <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>CATEGORY</Text>
-              <TextInput
-                style={styles.metaInput}
-                value={categoryInput}
-                onChangeText={setCategoryInput}
-                placeholder="e.g. Goals"
-                placeholderTextColor="#555"
-              />
-            </View>
+  if (currentScreen === 'create') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+          style={{ flex: 1 }}
+        >
+          <View style={styles.createHeader}>
+            <TouchableOpacity onPress={() => setCurrentScreen('home')}>
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.createTitle}>New Letter</Text>
+            <View style={{ width: 60 }} /> 
           </View>
 
-          {/* LETTER BODY INPUT */}
-          <Text style={styles.label}>The letter content</Text>
-          <TextInput
-            style={styles.textInputBody}
-            placeholder="Write down your thoughts, fears, dreams, or predictions..."
-            placeholderTextColor="#555"
-            multiline
-            textAlignVertical="top"
-            value={contentInput}
-            onChangeText={setContentInput}
-          />
-        </ScrollView>
+          <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
+            <Text style={styles.label}>To my future self...</Text>
+            <TextInput
+              style={styles.textInputTitle}
+              placeholder="Give your letter a title"
+              placeholderTextColor="#555"
+              value={titleInput}
+              onChangeText={setTitleInput}
+            />
 
-        <View style={styles.floatingBottomRow}>
-          <TouchableOpacity 
-            style={styles.floatingSealButton} 
-            activeOpacity={0.8}
-            onPress={handleSaveLetter}
-          >
-            <Text style={styles.floatingSealButtonText}>Seal Letter 🔒</Text>
+            <Text style={styles.label}>When should this unlock?</Text>
+            
+            <TouchableOpacity 
+              style={styles.dropdownSelector} 
+              activeOpacity={0.8}
+              onPress={() => setShowDropdown(!showDropdown)}
+            >
+              <Text style={styles.dropdownSelectorText}>
+                📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({unlockInput})
+              </Text>
+              <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
+            </TouchableOpacity>
+
+            {showDropdown && (
+              <View style={styles.dropdownMenu}>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(1, 'Tomorrow')}>
+                  <Text style={styles.dropdownItemText}>🌅 Tomorrow</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(3, '3 Days')}>
+                  <Text style={styles.dropdownItemText}>⏳ In 3 Days</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(7, '1 Week')}>
+                  <Text style={styles.dropdownItemText}>📅 In 1 Week</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={styles.dropdownItem} 
+                  onPress={() => {
+                    setShowDropdown(false);
+                    setShowCalendar(true);
+                  }}
+                >
+                  <Text style={styles.dropdownItemText}>📆 Open Calendar Visual Picker...</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {showCalendar && (
+              <View style={styles.calendarWrapper}>
+                {Platform.OS === 'ios' && (
+                  <View style={styles.iosCalendarHeader}>
+                    <Text style={styles.iosCalendarTitle}>Select Unlock Date</Text>
+                    <TouchableOpacity onPress={() => setShowCalendar(false)}>
+                      <Text style={styles.iosDoneText}>Done</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <DateTimePicker
+                  value={selectedRawDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                  minimumDate={new Date()} 
+                  onChange={onCalendarChange}
+                  themeVariant="dark"
+                />
+              </View>
+            )}
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaCol}>
+                <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
+                <TextInput
+                  style={styles.metaInput}
+                  value={unlockInput}
+                  editable={false} 
+                  placeholder="Select via dropdown above"
+                  placeholderTextColor="#555"
+                />
+              </View>
+              <View style={styles.metaCol}>
+                <Text style={styles.metaLabel}>CATEGORY</Text>
+                <TextInput
+                  style={styles.metaInput}
+                  value={categoryInput}
+                  onChangeText={setCategoryInput}
+                  placeholder="e.g. Goals"
+                  placeholderTextColor="#555"
+                />
+              </View>
+            </View>
+
+            <Text style={styles.label}>The letter content</Text>
+            <TextInput
+              style={styles.textInputBody}
+              placeholder="Write down your thoughts, fears, dreams, or predictions..."
+              placeholderTextColor="#555"
+              multiline
+              textAlignVertical="top"
+              value={contentInput}
+              onChangeText={setContentInput}
+            />
+          </ScrollView>
+
+          <View style={styles.floatingBottomRow}>
+            <TouchableOpacity 
+              style={styles.floatingSealButton} 
+              activeOpacity={0.8}
+              onPress={handleSaveLetter}
+            >
+              <Text style={styles.floatingSealButtonText}>Seal Letter 🔒</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  // --- SCREEN 3: DETAIL SCREEN (LOCKED or UNLOCKED) ---
+  if (currentScreen === 'detail' && selectedLetter) {
+    const unlocked = isLetterUnlocked(selectedLetter.unlockDate);
+
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.createHeader}>
+          <TouchableOpacity onPress={() => setCurrentScreen('home')}>
+            <Text style={styles.backButtonText}>⬅ Back</Text>
           </TouchableOpacity>
+          <Text style={styles.createTitle}>Letter Vault</Text>
+          <View style={{ width: 60 }} />
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
-  );
+
+        {unlocked ? (
+          /* UNLOCKED VIEW: READ THE LETTER */
+          <ScrollView contentContainerStyle={styles.detailContainer}>
+            <View style={styles.unlockedHeader}>
+              <View style={styles.unlockedCategoryBadge}>
+                <Text style={styles.unlockedCategoryText}>{selectedLetter.category}</Text>
+              </View>
+              <Text style={styles.unlockedDateText}>Unsealed on {selectedLetter.unlockDate}</Text>
+            </View>
+
+            <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
+            
+            <View style={styles.letterPaper}>
+              <Text style={styles.letterPaperText}>{selectedLetter.content}</Text>
+            </View>
+          </ScrollView>
+        ) : (
+          /* LOCKED VIEW: SECURIT CAP countdown */
+          <View style={styles.lockedContainer}>
+            <View style={styles.padlockCircle}>
+              <Text style={styles.padlockEmoji}>🔒</Text>
+            </View>
+            
+            <Text style={styles.lockedWarningTitle}>This Letter is Sealed</Text>
+            <Text style={styles.lockedWarningSubtitle}>
+              You wrote this with a promise not to open it before the unlock date. No peeking!
+            </Text>
+
+            <View style={styles.lockDetailsCard}>
+              <Text style={styles.lockDetailsLabel}>DESTINATION DATE</Text>
+              <Text style={styles.lockDetailsValue}>{selectedLetter.unlockDate}</Text>
+              
+              <View style={styles.lockedSeparator} />
+              
+              <Text style={styles.lockDetailsLabel}>CATEGORY</Text>
+              <Text style={styles.lockDetailsValue}>{selectedLetter.category}</Text>
+            </View>
+
+            <Text style={styles.lockedTagline}>⏳ Access will be granted automatically on release day.</Text>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  return null;
 }
 
 const styles = StyleSheet.create({
@@ -550,6 +657,17 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontSize: 11,
   },
+  unlockedBadge: {
+    backgroundColor: 'rgba(0, 230, 118, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  unlockedBadgeText: {
+    color: '#00e676',
+    fontSize: 11,
+    fontWeight: '600',
+  },
   
   // --- CREATE SCREEN STYLES ---
   createHeader: {
@@ -567,6 +685,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     width: 60,
+  },
+  backButtonText: {
+    color: '#bb86fc',
+    fontSize: 16,
+    fontWeight: '500',
+    width: 80,
   },
   createTitle: {
     color: '#ffffff',
@@ -634,8 +758,6 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
   },
-
-  // CALENDAR WRAPPER UI
   calendarWrapper: {
     backgroundColor: '#1e1e1e',
     borderRadius: 16,
@@ -663,7 +785,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -722,5 +843,118 @@ const styles = StyleSheet.create({
     color: '#121212',
     fontSize: 15,
     fontWeight: '700',
+  },
+
+  // --- DETAIL VIEW STYLES ---
+  detailContainer: {
+    padding: 20,
+  },
+  unlockedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  unlockedCategoryBadge: {
+    backgroundColor: 'rgba(187, 134, 252, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  unlockedCategoryText: {
+    color: '#bb86fc',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  unlockedDateText: {
+    color: '#888888',
+    fontSize: 13,
+  },
+  detailLetterTitle: {
+    color: '#ffffff',
+    fontSize: 26,
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+  letterPaper: {
+    backgroundColor: '#1e1e1e',
+    borderWidth: 1,
+    borderColor: '#2d2d2d',
+    borderRadius: 16,
+    padding: 20,
+    minHeight: 250,
+  },
+  letterPaperText: {
+    color: '#e0e0e0',
+    fontSize: 16,
+    lineHeight: 26,
+  },
+
+  // --- LOCKED VAULT VIEW STYLES ---
+  lockedContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
+    paddingBottom: 60,
+  },
+  padlockCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(187, 134, 252, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    borderWidth: 1.5,
+    borderColor: '#bb86fc',
+  },
+  padlockEmoji: {
+    fontSize: 48,
+  },
+  lockedWarningTitle: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  lockedWarningSubtitle: {
+    color: '#888888',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 32,
+  },
+  lockDetailsCard: {
+    backgroundColor: '#1e1e1e',
+    borderWidth: 1,
+    borderColor: '#2d2d2d',
+    borderRadius: 16,
+    width: '100%',
+    padding: 20,
+    marginBottom: 32,
+  },
+  lockDetailsLabel: {
+    color: '#888888',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 6,
+  },
+  lockDetailsValue: {
+    color: '#ffffff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  lockedSeparator: {
+    height: 1,
+    backgroundColor: '#2d2d2d',
+    marginVertical: 14,
+  },
+  lockedTagline: {
+    color: '#bb86fc',
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
