@@ -10,21 +10,25 @@ import {
   KeyboardAvoidingView,
   Platform 
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home');
 
-  // Input States
+  // Form Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
   const [unlockInput, setUnlockInput] = useState('Dec 31, 2026'); 
   const [categoryInput, setCategoryInput] = useState('Personal');
 
-  // Dropdown UI State
+  // Preset Picker UI States
   const [showDropdown, setShowDropdown] = useState(false);
   const [activePreset, setActivePreset] = useState('Custom');
 
-  // Dynamic Letters Database State
+  // Native Calendar Controller State
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [selectedRawDate, setSelectedRawDate] = useState(new Date());
+
   const [sealedLetters, setSealedLetters] = useState([
     { id: 1, title: "My Goals for this Summer", unlockDate: "Aug 31, 2026", category: "Personal" },
     { id: 2, title: "Message to Me in 5 Years", unlockDate: "Jul 14, 2031", category: "Future" },
@@ -46,21 +50,36 @@ export default function App() {
     { label: 'Archive', icon: '📦', count: 5 },
   ];
 
-  // Helper helper to calculate and format future dates dynamically
-  const setDateFromPreset = (daysToAdd, label) => {
-    const targetDate = new Date();
-    targetDate.setDate(targetDate.getDate() + daysToAdd);
-    
-    // Format: "MMM DD, YYYY" (e.g., "Jul 15, 2026")
-    const formatted = targetDate.toLocaleDateString('en-US', {
+  // Helper helper to format dates beautifully
+  const formatDisplayDate = (dateObj) => {
+    return dateObj.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
+  };
+
+  // Triggers when a preset button is tapped
+  const setDateFromPreset = (daysToAdd, label) => {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + daysToAdd);
     
-    setUnlockInput(formatted);
+    setSelectedRawDate(targetDate);
+    setUnlockInput(formatDisplayDate(targetDate));
     setActivePreset(label);
-    setShowDropdown(false); // Close dropdown after selection
+    setShowDropdown(false);
+  };
+
+  // Triggers when a user picks a date from the native calendar
+  const onCalendarChange = (event, selectedDate) => {
+    // Hide calendar window for Android immediate response
+    if (Platform.OS === 'android') setShowCalendar(false);
+
+    if (selectedDate) {
+      setSelectedRawDate(selectedDate);
+      setUnlockInput(formatDisplayDate(selectedDate));
+      setActivePreset('Custom Date');
+    }
   };
 
   const handleSaveLetter = () => {
@@ -213,12 +232,12 @@ export default function App() {
             onPress={() => setShowDropdown(!showDropdown)}
           >
             <Text style={styles.dropdownSelectorText}>
-              📅 Unlock Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({unlockInput})
+              📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({unlockInput})
             </Text>
             <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
           </TouchableOpacity>
 
-          {/* DROPDOWN MENU LIST */}
+          {/* DROPDOWN OPTIONS MENU */}
           {showDropdown && (
             <View style={styles.dropdownMenu}>
               <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(1, 'Tomorrow')}>
@@ -233,27 +252,46 @@ export default function App() {
               <TouchableOpacity 
                 style={styles.dropdownItem} 
                 onPress={() => {
-                  setActivePreset('Custom');
                   setShowDropdown(false);
+                  setShowCalendar(true); // Open system calendar window!
                 }}
               >
-                <Text style={styles.dropdownItemText}>✏️ Custom Date (Type below)</Text>
+                <Text style={styles.dropdownItemText}>📆 Open Calendar Visual Picker...</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* METADATA FORM ROW */}
+          {/* NATIVE SYSTEM CALENDAR MOUNT */}
+          {showCalendar && (
+            <View style={styles.calendarWrapper}>
+              {Platform.OS === 'ios' && (
+                <View style={styles.iosCalendarHeader}>
+                  <Text style={styles.iosCalendarTitle}>Select Unlock Date</Text>
+                  <TouchableOpacity onPress={() => setShowCalendar(false)}>
+                    <Text style={styles.iosDoneText}>Done</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+              <DateTimePicker
+                value={selectedRawDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
+                minimumDate={new Date()} // Prevent sealing letters in the past!
+                onChange={onCalendarChange}
+                themeVariant="dark"
+              />
+            </View>
+          )}
+
+          {/* METADATA SUMMARY */}
           <View style={styles.metaRow}>
             <View style={styles.metaCol}>
               <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
               <TextInput
                 style={styles.metaInput}
                 value={unlockInput}
-                onChangeText={(val) => {
-                  setUnlockInput(val);
-                  if (activePreset !== 'Custom') setActivePreset('Custom');
-                }}
-                placeholder="e.g. Dec 31, 2026"
+                editable={false} // Automatically synced to calendar selection now
+                placeholder="Select via dropdown above"
                 placeholderTextColor="#555"
               />
             </View>
@@ -282,7 +320,6 @@ export default function App() {
           />
         </ScrollView>
 
-        {/* FLOATING ACTION BOTTOM ROW */}
         <View style={styles.floatingBottomRow}>
           <TouchableOpacity 
             style={styles.floatingSealButton} 
@@ -538,7 +575,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     padding: 20,
-    paddingBottom: 120, 
+    paddingBottom: 140, 
   },
   label: {
     color: '#888888',
@@ -558,8 +595,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2d2d2d',
   },
-  
-  // DROPDOWN SELECTOR BAR
   dropdownSelector: {
     backgroundColor: '#1e1e1e',
     borderRadius: 12,
@@ -582,8 +617,6 @@ const styles = StyleSheet.create({
     color: '#888888',
     fontSize: 12,
   },
-
-  // EXPANDED DROPDOWN LIST
   dropdownMenu: {
     backgroundColor: '#1e1e1e',
     borderRadius: 12,
@@ -602,6 +635,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
+  // CALENDAR WRAPPER UI
+  calendarWrapper: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 16,
+    padding: 12,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#bb86fc',
+  },
+  iosCalendarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 8,
+    marginBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2d2d2d',
+  },
+  iosCalendarTitle: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  iosDoneText: {
+    color: '#bb86fc',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -618,8 +680,8 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   metaInput: {
-    color: '#ffffff',
-    backgroundColor: '#1e1e1e',
+    color: '#aaaaaa',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 10,
     borderWidth: 1,
