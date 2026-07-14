@@ -8,21 +8,27 @@ import {
   ScrollView, 
   TextInput,
   KeyboardAvoidingView,
-  Platform
+  Platform 
 } from 'react-native';
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home');
 
+  // Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
   const [unlockInput, setUnlockInput] = useState('Dec 31, 2026'); 
   const [categoryInput, setCategoryInput] = useState('Personal');
 
+  // Dropdown UI State
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [activePreset, setActivePreset] = useState('Custom');
+
+  // Dynamic Letters Database State
   const [sealedLetters, setSealedLetters] = useState([
     { id: 1, title: "My Goals for this Summer", unlockDate: "Aug 31, 2026", category: "Personal" },
-    { id: 2, title: "Message to Me in 5 Years", unlockDate: "July 14, 2031", category: "Future" },
-    { id: 3, title: "Advice for College Entry", unlockDate: "Sept 1, 2027", category: "School" },
+    { id: 2, title: "Message to Me in 5 Years", unlockDate: "Jul 14, 2031", category: "Future" },
+    { id: 3, title: "Advice for College Entry", unlockDate: "Sep 1, 2027", category: "School" },
   ]);
 
   const nextLetter = {
@@ -40,6 +46,23 @@ export default function App() {
     { label: 'Archive', icon: '📦', count: 5 },
   ];
 
+  // Helper helper to calculate and format future dates dynamically
+  const setDateFromPreset = (daysToAdd, label) => {
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() + daysToAdd);
+    
+    // Format: "MMM DD, YYYY" (e.g., "Jul 15, 2026")
+    const formatted = targetDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    
+    setUnlockInput(formatted);
+    setActivePreset(label);
+    setShowDropdown(false); // Close dropdown after selection
+  };
+
   const handleSaveLetter = () => {
     if (!titleInput.trim()) return alert("Please give your letter a title!");
 
@@ -54,6 +77,7 @@ export default function App() {
     
     setTitleInput('');
     setContentInput('');
+    setActivePreset('Custom');
     setCurrentScreen('home');
   };
 
@@ -63,14 +87,12 @@ export default function App() {
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
           
-          {/* HEADER SECTION */}
           <View style={styles.header}>
             <Text style={styles.welcomeText}>Welcome back</Text>
             <Text style={styles.titleText}>Future Letter</Text>
             <Text style={styles.taglineText}>✨ Write today. Discover tomorrow.</Text>
           </View>
 
-          {/* HERO COUNTDOWN CARD */}
           <View style={styles.heroContainer}>
             <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
               <View style={styles.heroHeader}>
@@ -98,7 +120,6 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* QUICK NAVIGATION TILES GRID */}
           <View style={styles.gridContainer}>
             {tiles.map((tile, index) => (
               <TouchableOpacity key={index} style={styles.tileButton} activeOpacity={0.8}>
@@ -115,7 +136,6 @@ export default function App() {
             ))}
           </View>
 
-          {/* WRITE NEW LETTER CTA BUTTON */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={styles.writeButton} 
@@ -126,7 +146,6 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
-          {/* SEALED LETTERS LIST */}
           <View style={styles.sealedSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Sealed letters</Text>
@@ -165,16 +184,16 @@ export default function App() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         style={{ flex: 1 }}
       >
-        {/* SAFE HEADER (Pushed down slightly to clear camera notches) */}
         <View style={styles.createHeader}>
           <TouchableOpacity onPress={() => setCurrentScreen('home')}>
             <Text style={styles.cancelText}>Cancel</Text>
           </TouchableOpacity>
           <Text style={styles.createTitle}>New Letter</Text>
-          <View style={{ width: 50 }} /> {/* Purely for balancing the title in the center */}
+          <View style={{ width: 60 }} /> 
         </View>
 
-        <ScrollView contentContainerStyle={styles.formContainer}>
+        <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
+          
           {/* TITLE INPUT */}
           <Text style={styles.label}>To my future self...</Text>
           <TextInput
@@ -185,14 +204,55 @@ export default function App() {
             onChangeText={setTitleInput}
           />
 
-          {/* METADATA (CATEGORY & DATE) */}
+          {/* DYNAMIC DROP-DOWN DATE SELECTOR */}
+          <Text style={styles.label}>When should this unlock?</Text>
+          
+          <TouchableOpacity 
+            style={styles.dropdownSelector} 
+            activeOpacity={0.8}
+            onPress={() => setShowDropdown(!showDropdown)}
+          >
+            <Text style={styles.dropdownSelectorText}>
+              📅 Unlock Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({unlockInput})
+            </Text>
+            <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
+          </TouchableOpacity>
+
+          {/* DROPDOWN MENU LIST */}
+          {showDropdown && (
+            <View style={styles.dropdownMenu}>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(1, 'Tomorrow')}>
+                <Text style={styles.dropdownItemText}>🌅 Tomorrow</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(3, '3 Days')}>
+                <Text style={styles.dropdownItemText}>⏳ In 3 Days</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(7, '1 Week')}>
+                <Text style={styles.dropdownItemText}>📅 In 1 Week</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.dropdownItem} 
+                onPress={() => {
+                  setActivePreset('Custom');
+                  setShowDropdown(false);
+                }}
+              >
+                <Text style={styles.dropdownItemText}>✏️ Custom Date (Type below)</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* METADATA FORM ROW */}
           <View style={styles.metaRow}>
             <View style={styles.metaCol}>
-              <Text style={styles.metaLabel}>UNLOCK DATE</Text>
+              <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
               <TextInput
                 style={styles.metaInput}
                 value={unlockInput}
-                onChangeText={setUnlockInput}
+                onChangeText={(val) => {
+                  setUnlockInput(val);
+                  if (activePreset !== 'Custom') setActivePreset('Custom');
+                }}
                 placeholder="e.g. Dec 31, 2026"
                 placeholderTextColor="#555"
               />
@@ -222,7 +282,7 @@ export default function App() {
           />
         </ScrollView>
 
-        {/* FLOATING ACTION BOTTOM ROW FOR EASY THUMB REACH */}
+        {/* FLOATING ACTION BOTTOM ROW */}
         <View style={styles.floatingBottomRow}>
           <TouchableOpacity 
             style={styles.floatingSealButton} 
@@ -454,13 +514,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   
-  // --- CREATE SCREEN STYLES (UPDATED FOR CAMERA SAFETY) ---
+  // --- CREATE SCREEN STYLES ---
   createHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 16 : 8, // Safety padding for camera punches/notches
+    paddingTop: Platform.OS === 'android' ? 16 : 8,
     paddingBottom: 16,
     borderBottomWidth: 1,
     borderColor: '#2d2d2d',
@@ -478,7 +538,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     padding: 20,
-    paddingBottom: 100, // Space so keyboard/bottom row doesn't block text inputs
+    paddingBottom: 120, 
   },
   label: {
     color: '#888888',
@@ -498,6 +558,50 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2d2d2d',
   },
+  
+  // DROPDOWN SELECTOR BAR
+  dropdownSelector: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#2d2d2d',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dropdownSelectorText: {
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  dropdownHighlight: {
+    color: '#bb86fc',
+    fontWeight: '700',
+  },
+  dropdownArrow: {
+    color: '#888888',
+    fontSize: 12,
+  },
+
+  // EXPANDED DROPDOWN LIST
+  dropdownMenu: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 12,
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: '#3a3a3a',
+    overflow: 'hidden',
+  },
+  dropdownItem: {
+    padding: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2d2d2d',
+  },
+  dropdownItemText: {
+    color: '#ffffff',
+    fontSize: 14,
+  },
+
   metaRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -533,25 +637,24 @@ const styles = StyleSheet.create({
     borderColor: '#2d2d2d',
     lineHeight: 24,
   },
-  // FLOATING BOTTOM ROW STYLE
   floatingBottomRow: {
     position: 'absolute',
     bottom: 24,
     left: 20,
     right: 20,
     flexDirection: 'row',
-    justifyContent: 'flex-end', // Aligns our button to the bottom right!
+    justifyContent: 'flex-end',
   },
   floatingSealButton: {
     backgroundColor: '#bb86fc',
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 24, // Pill shape
+    borderRadius: 24,
     shadowColor: '#bb86fc',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 6, // Shadow on Android
+    elevation: 6,
   },
   floatingSealButtonText: {
     color: '#121212',
