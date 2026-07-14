@@ -8,7 +8,8 @@ import {
   ScrollView, 
   TextInput,
   KeyboardAvoidingView,
-  Platform 
+  Platform,
+  Alert
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -31,7 +32,7 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
 
-  // Dynamic Letters Database State (with a mix of locked and unlocked letters for testing!)
+  // Dynamic Letters Database State
   const [sealedLetters, setSealedLetters] = useState([
     { 
       id: 1, 
@@ -57,7 +58,7 @@ export default function App() {
     {
       id: 4,
       title: "Note to self (Unlocked!)",
-      unlockDate: "Jan 1, 2026", // Already passed!
+      unlockDate: "Jan 1, 2026", 
       category: "Instant",
       content: "This is a letter from the past that you can read right now because its unlock date has already passed. Pretty cool, right?!"
     }
@@ -128,7 +129,7 @@ export default function App() {
   // Helper to check if a letter is unlocked
   const isLetterUnlocked = (unlockDateStr) => {
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Clear time for accurate day comparison
+    today.setHours(0, 0, 0, 0); 
     const unlockDate = new Date(unlockDateStr);
     return today >= unlockDate;
   };
@@ -137,6 +138,31 @@ export default function App() {
   const handleSelectLetter = (letter) => {
     setSelectedLetter(letter);
     setCurrentScreen('detail');
+  };
+
+  // Deletion logic with native confirmation alert
+  const handleDeleteLetter = (letterId) => {
+    Alert.alert(
+      "Discard Letter",
+      "Are you absolutely sure you want to permanently delete this letter? This action cannot be undone.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            // Filter out the deleted letter from state
+            const updatedLetters = sealedLetters.filter(letter => letter.id !== letterId);
+            setSealedLetters(updatedLetters);
+            setCurrentScreen('home');
+            setSelectedLetter(null);
+          }
+        }
+      ]
+    );
   };
 
   // --- SCREEN 1: HOME DASHBOARD ---
@@ -390,7 +416,11 @@ export default function App() {
             <Text style={styles.backButtonText}>⬅ Back</Text>
           </TouchableOpacity>
           <Text style={styles.createTitle}>Letter Vault</Text>
-          <View style={{ width: 60 }} />
+          
+          {/* TRASH CAN DISCARD BUTTON IN TOP RIGHT */}
+          <TouchableOpacity onPress={() => handleDeleteLetter(selectedLetter.id)}>
+            <Text style={styles.trashText}>🗑️ Discard</Text>
+          </TouchableOpacity>
         </View>
 
         {unlocked ? (
@@ -410,7 +440,7 @@ export default function App() {
             </View>
           </ScrollView>
         ) : (
-          /* LOCKED VIEW: SECURIT CAP countdown */
+          /* LOCKED VIEW */
           <View style={styles.lockedContainer}>
             <View style={styles.padlockCircle}>
               <Text style={styles.padlockEmoji}>🔒</Text>
@@ -449,9 +479,8 @@ const styles = StyleSheet.create({
   scrollContainer: {
     paddingBottom: 40,
   },
-header: {
+  header: {
     paddingHorizontal: 20,
-    // Safely pushes the home header below dynamic islands, notches, and status bars
     paddingTop: Platform.OS === 'ios' ? 44 : 32, 
     paddingBottom: 8,
   },
@@ -670,7 +699,7 @@ header: {
     fontWeight: '600',
   },
   
-  // --- CREATE SCREEN STYLES ---
+  // --- CREATE/DETAIL HEADER ---
   createHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -685,12 +714,19 @@ header: {
     color: '#ff5c5c',
     fontSize: 16,
     fontWeight: '500',
-    width: 60,
+    width: 80,
   },
   backButtonText: {
     color: '#bb86fc',
     fontSize: 16,
     fontWeight: '500',
+    width: 80,
+  },
+  trashText: {
+    color: '#ff5c5c',
+    fontSize: 15,
+    fontWeight: '600',
+    textAlign: 'right',
     width: 80,
   },
   createTitle: {
