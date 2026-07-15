@@ -13,174 +13,78 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-// Define our beautiful Stationery Themes
+// Define our Stationery Themes
 const THEMES = {
-  classic: {
-    name: "Classic Slate",
-    bg: "#1e1e1e",
-    border: "#2d2d2d",
-    text: "#e0e0e0",
-    accent: "#bb86fc",
-    fontStyle: "normal",
-  },
-  parchment: {
-    name: "Vintage Parchment",
-    bg: "#2c251e",
-    border: "#c3a380",
-    text: "#f4ebd0",
-    accent: "#c3a380",
-    fontStyle: "italic",
-  },
-  neon: {
-    name: "Cyberpunk Neon",
-    bg: "#0c0214",
-    border: "#ff007f",
-    text: "#00f0ff",
-    accent: "#ff007f",
-    fontStyle: "normal",
-  },
-  moss: {
-    name: "Forest Moss",
-    bg: "#141c16",
-    border: "#81b29a",
-    text: "#f4f1de",
-    accent: "#81b29a",
-    fontStyle: "normal",
-  }
+  classic: { name: "Classic Slate", bg: "#1e1e1e", border: "#2d2d2d", text: "#e0e0e0", accent: "#bb86fc", fontStyle: "normal" },
+  parchment: { name: "Vintage Parchment", bg: "#2c251e", border: "#c3a380", text: "#f4ebd0", accent: "#c3a380", fontStyle: "italic" },
+  neon: { name: "Cyberpunk Neon", bg: "#0c0214", border: "#ff007f", text: "#00f0ff", accent: "#ff007f", fontStyle: "normal" },
+  moss: { name: "Forest Moss", bg: "#141c16", border: "#81b29a", text: "#f4f1de", accent: "#81b29a", fontStyle: "normal" }
 };
 
 export default function App() {
-  // Navigation State: 'home', 'create', or 'detail'
+  // Navigation & Form Input States
   const [currentScreen, setCurrentScreen] = useState('home');
   const [selectedLetter, setSelectedLetter] = useState(null);
-
-  // Form Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
   const [unlockInput, setUnlockInput] = useState(new Date().toISOString().split('T')[0]); 
   const [categoryInput, setCategoryInput] = useState('Personal');
-  const [themeInput, setThemeInput] = useState('classic'); // Default theme selection
+  const [themeInput, setThemeInput] = useState('classic');
 
-  // Preset Picker UI States
+  // UI States
   const [showDropdown, setShowDropdown] = useState(false);
   const [activePreset, setActivePreset] = useState('Custom');
-
-  // Native Calendar Controller State
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
 
-  // Dynamic Letters Database State with built-in Themes
+  // Letters Database State
   const [sealedLetters, setSealedLetters] = useState([
-    { 
-      id: 1, 
-      title: "My Goals for this Summer", 
-      unlockDate: "2026-08-31", 
-      category: "Personal",
-      theme: "moss",
-      content: "Hey future self! Did you end up going on that road trip? Did you finish learning React Native? I hope you had an amazing summer and didn't spend the whole time playing video games. Write down what actually happened!"
-    },
-    { 
-      id: 2, 
-      title: "Message to Me in 5 Years", 
-      unlockDate: "2031-07-14", 
-      category: "Future",
-      theme: "parchment",
-      content: "Hello from 2026! You are officially 5 years older now. Are you working at your dream job? Are you still drinking way too much iced coffee? I hope you are happy, healthy, and still curious."
-    },
-    { 
-      id: 3, 
-      title: "Advice for College Entry", 
-      unlockDate: "2027-09-01", 
-      category: "School",
-      theme: "classic",
-      content: "College is starting! Take a deep breath. You belong here. Work hard, make good friends, and remember to call your family."
-    },
-    {
-      id: 4,
-      title: "Note to self (Unlocked!)",
-      unlockDate: "2026-01-01", 
-      category: "Instant",
-      theme: "neon",
-      content: "This is a letter from the past that you can read right now because its unlock date has already passed. Pretty cool, right?!"
-    }
+    { id: 1, title: "My Goals for this Summer", unlockDate: "2026-08-31", category: "Personal", theme: "moss", content: "Hey future self! Did you end up going on that road trip?" },
+    { id: 2, title: "Message to Me in 5 Years", unlockDate: "2031-07-14", category: "Future", theme: "parchment", content: "Hello from 2026! You are officially 5 years older now." },
+    { id: 3, title: "Advice for College Entry", unlockDate: "2027-09-01", category: "School", theme: "classic", content: "College is starting! Take a deep breath." },
+    { id: 4, title: "Note to self (Unlocked!)", unlockDate: "2026-01-01", category: "Instant", theme: "neon", content: "This is a letter from the past that you can read right now." }
   ]);
 
-  // State to hold the live ticking countdown values
-  const [countdown, setCountdown] = useState({
-    title: "No upcoming letters",
-    years: "0",
-    months: "0",
-    days: "0",
-    hours: "0",
-    minutes: "0",
-    seconds: "0"
-  });
+  const [countdown, setCountdown] = useState({ title: "No upcoming letters", years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
+  const tiles = [{ label: 'Favorites', icon: '⭐', count: 3 }, { label: 'Categories', icon: '📁', count: 0 }, { label: 'Badges', icon: '🏆', count: 1 }, { label: 'Archive', icon: '📦', count: 5 }];
 
-  const tiles = [
-    { label: 'Favorites', icon: '⭐', count: 3 },
-    { label: 'Categories', icon: '📁', count: 0 },
-    { label: 'Badges', icon: '🏆', count: 1 },
-    { label: 'Archive', icon: '📦', count: 5 },
-  ];
+  // Safe manual parse helper for mobile timezone calculation bugs
+  const parseDateSafely = (dateStr) => {
+    const parts = dateStr.split('-');
+    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0);
+  };
 
-  // Helper to check if a letter is unlocked
   const isLetterUnlocked = (unlockDateStr) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
-    
-    const parts = unlockDateStr.split('-');
-    const unlockDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    unlockDate.setHours(0, 0, 0, 0);
-
+    const unlockDate = parseDateSafely(unlockDateStr);
     return today >= unlockDate;
   };
 
-  // Helper to format YYYY-MM-DD into a pretty UI string
   const formatDisplayString = (dateStr) => {
-    const parts = dateStr.split('-');
-    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    return d.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const d = parseDateSafely(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
-  // --- BULLETPROOF LIVE TIMER ENGINE EFFECT ---
+  // --- LIVE TIMER ENGINE EFFECT ---
   useEffect(() => {
     const updateTimer = () => {
       const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate));
-      
       if (lockedLetters.length === 0) {
         setCountdown(prev => ({ ...prev, title: "All letters unlocked! 🎉" }));
         return;
       }
 
-      const sorted = [...lockedLetters].sort((a, b) => {
-        const parseDateSafely = (dateStr) => {
-          const parts = dateStr.split('-');
-          return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-        };
-        return parseDateSafely(a.unlockDate) - parseDateSafely(b.unlockDate);
-      });
-      
+      const sorted = [...lockedLetters].sort((a, b) => parseDateSafely(a.unlockDate) - parseDateSafely(b.unlockDate));
       const targetLetter = sorted[0];
       if (!targetLetter || !targetLetter.unlockDate) return;
 
       const now = new Date();
-      const dateParts = targetLetter.unlockDate.split('-');
-      const year = parseInt(dateParts[0], 10);
-      const monthIndex = parseInt(dateParts[1], 10) - 1;
-      const day = parseInt(dateParts[2], 10);
-      
-      const target = new Date(year, monthIndex, day, 0, 0, 0, 0);
+      const target = parseDateSafely(targetLetter.unlockDate);
       let diffMs = target - now;
 
       if (diffMs <= 0) {
-        setCountdown({ 
-          title: targetLetter.title, 
-          years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" 
-        });
+        setCountdown({ title: targetLetter.title, years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
         return;
       }
 
@@ -192,7 +96,6 @@ export default function App() {
       const calculatedYears = Math.floor(totalDays / 365);
       const calculatedMonths = Math.floor((totalDays % 365) / 30.43);
       const remainingDays = Math.floor((totalDays % 365) % 30.43);
-      
       const remainingHours = totalHours % 24;
       const remainingMinutes = totalMinutes % 60;
       const remainingSeconds = totalSeconds % 60;
@@ -213,7 +116,6 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [sealedLetters]);
 
-  // Date utilities for calendar selection
   const formatDisplayDate = (dateObj) => {
     const offset = dateObj.getTimezoneOffset();
     const correctedDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
@@ -223,7 +125,6 @@ export default function App() {
   const setDateFromPreset = (daysToAdd, label) => {
     const targetDate = new Date();
     targetDate.setDate(targetDate.getDate() + daysToAdd);
-    
     setSelectedRawDate(targetDate);
     setUnlockInput(formatDisplayDate(targetDate));
     setActivePreset(label);
@@ -247,12 +148,11 @@ export default function App() {
       title: titleInput,
       unlockDate: unlockInput,
       category: categoryInput,
-      theme: themeInput, // Save the custom theme selection
-      content: contentInput || "No content written in this letter.",
+      theme: themeInput,
+      content: contentInput || "No content written.",
     };
 
     setSealedLetters([newLetter, ...sealedLetters]); 
-    
     setTitleInput('');
     setContentInput('');
     setThemeInput('classic');
@@ -265,17 +165,17 @@ export default function App() {
     setCurrentScreen('detail');
   };
 
-  const handleDeleteLetter = (letterId) => {
+  const handleDeleteLetter = (letter) => {
     Alert.alert(
       "Discard Letter",
-      "Are you absolutely sure you want to permanently delete this letter? This action cannot be undone.",
+      "Are you absolutely sure you want to permanently delete this letter?",
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: () => {
-            const updatedLetters = sealedLetters.filter(letter => letter.id !== letterId);
+            const updatedLetters = sealedLetters.filter(l => l.id !== letter.id);
             setSealedLetters(updatedLetters);
             setCurrentScreen('home');
             setSelectedLetter(null);
@@ -290,14 +190,12 @@ export default function App() {
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
-          
           <View style={styles.header}>
             <Text style={styles.welcomeText}>Welcome back</Text>
             <Text style={styles.titleText}>Future Letter</Text>
             <Text style={styles.taglineText}>✨ Write today. Discover tomorrow.</Text>
           </View>
 
-          {/* DYNAMIC REAL-TIME HERO COUNTDOWN CARD */}
           <View style={styles.heroContainer}>
             <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
               <View style={styles.heroHeader}>
@@ -306,9 +204,7 @@ export default function App() {
                   <Text style={styles.milestoneText}>Future</Text>
                 </View>
               </View>
-              
               <Text style={styles.heroTitle}>{countdown.title}</Text>
-              
               <View style={styles.countdownRow}>
                 {[
                   { label: 'Yrs', val: countdown.years },
@@ -331,24 +227,16 @@ export default function App() {
             {tiles.map((tile, index) => (
               <TouchableOpacity key={index} style={styles.tileButton} activeOpacity={0.8}>
                 <View style={styles.tileLeft}>
-                  <View style={styles.iconCircle}>
-                    <Text style={styles.tileIcon}>{tile.icon}</Text>
-                  </View>
+                  <View style={styles.iconCircle}><Text style={styles.tileIcon}>{tile.icon}</Text></View>
                   <Text style={styles.tileLabel}>{tile.label}</Text>
                 </View>
-                {tile.count > 0 && (
-                  <Text style={styles.tileCount}>{tile.count}</Text>
-                )}
+                {tile.count > 0 && <Text style={styles.tileCount}>{tile.count}</Text>}
               </TouchableOpacity>
             ))}
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
-              style={styles.writeButton} 
-              activeOpacity={0.8}
-              onPress={() => setCurrentScreen('create')}
-            >
+            <TouchableOpacity style={styles.writeButton} activeOpacity={0.8} onPress={() => setCurrentScreen('create')}>
               <Text style={styles.writeButtonText}>✍️ Write a new letter</Text>
             </TouchableOpacity>
           </View>
@@ -356,21 +244,13 @@ export default function App() {
           <View style={styles.sealedSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Sealed letters</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAllText}>See all ➔</Text>
-              </TouchableOpacity>
+              <TouchableOpacity><Text style={styles.seeAllText}>See all ➔</Text></TouchableOpacity>
             </View>
-
             <View style={styles.lettersList}>
               {sealedLetters.map((letter) => {
                 const unlocked = isLetterUnlocked(letter.unlockDate);
                 return (
-                  <TouchableOpacity 
-                    key={letter.id} 
-                    style={styles.letterCard} 
-                    activeOpacity={0.7}
-                    onPress={() => handleSelectLetter(letter)}
-                  >
+                  <TouchableOpacity key={letter.id} style={styles.letterCard} activeOpacity={0.7} onPress={() => handleSelectLetter(letter)}>
                     <View style={styles.letterLeft}>
                       <Text style={styles.lockIcon}>{unlocked ? '🔓' : '🔒'}</Text>
                       <View>
@@ -381,16 +261,13 @@ export default function App() {
                       </View>
                     </View>
                     <View style={unlocked ? styles.unlockedBadge : styles.categoryBadge}>
-                      <Text style={unlocked ? styles.unlockedBadgeText : styles.categoryText}>
-                        {letter.category}
-                      </Text>
+                      <Text style={unlocked ? styles.unlockedBadgeText : styles.categoryText}>{letter.category}</Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
           </View>
-
         </ScrollView>
       </SafeAreaView>
     );
@@ -400,61 +277,29 @@ export default function App() {
   if (currentScreen === 'create') {
     return (
       <SafeAreaView style={styles.container}>
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-          style={{ flex: 1 }}
-        >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.createHeader}>
-            <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-              <Text style={styles.cancelText}>Cancel</Text>
-            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setCurrentScreen('home')}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
             <Text style={styles.createTitle}>New Letter</Text>
             <View style={{ width: 80 }} /> 
           </View>
 
           <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
             <Text style={styles.label}>To my future self...</Text>
-            <TextInput
-              style={styles.textInputTitle}
-              placeholder="Give your letter a title"
-              placeholderTextColor="#555"
-              value={titleInput}
-              onChangeText={setTitleInput}
-            />
+            <TextInput style={styles.textInputTitle} placeholder="Give your letter a title" placeholderTextColor="#555" value={titleInput} onChangeText={setTitleInput} />
 
             <Text style={styles.label}>When should this unlock?</Text>
-            
-            <TouchableOpacity 
-              style={styles.dropdownSelector} 
-              activeOpacity={0.8}
-              onPress={() => setShowDropdown(!showDropdown)}
-            >
-              <Text style={styles.dropdownSelectorText}>
-                📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({formatDisplayString(unlockInput)})
-              </Text>
+            <TouchableOpacity style={styles.dropdownSelector} activeOpacity={0.8} onPress={() => setShowDropdown(!showDropdown)}>
+              <Text style={styles.dropdownSelectorText}>📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({formatDisplayString(unlockInput)})</Text>
               <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
             {showDropdown && (
               <View style={styles.dropdownMenu}>
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(1, 'Tomorrow')}>
-                  <Text style={styles.dropdownItemText}>🌅 Tomorrow</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(3, '3 Days')}>
-                  <Text style={styles.dropdownItemText}>⏳ In 3 Days</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(7, '1 Week')}>
-                  <Text style={styles.dropdownItemText}>📅 In 1 Week</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.dropdownItem} 
-                  onPress={() => {
-                    setShowDropdown(false);
-                    setShowCalendar(true);
-                  }}
-                >
-                  <Text style={styles.dropdownItemText}>📆 Open Calendar Visual Picker...</Text>
-                </TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(1, 'Tomorrow')}><Text style={styles.dropdownItemText}>🌅 Tomorrow</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(3, '3 Days')}><Text style={styles.dropdownItemText}>⏳ In 3 Days</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => setDateFromPreset(7, '1 Week')}><Text style={styles.dropdownItemText}>📅 In 1 Week</Text></TouchableOpacity>
+                <TouchableOpacity style={styles.dropdownItem} onPress={() => { setShowDropdown(false); setShowCalendar(true); }}><Text style={styles.dropdownItemText}>📆 Open Calendar Visual Picker...</Text></TouchableOpacity>
               </View>
             )}
 
@@ -463,40 +308,21 @@ export default function App() {
                 {Platform.OS === 'ios' && (
                   <View style={styles.iosCalendarHeader}>
                     <Text style={styles.iosCalendarTitle}>Select Unlock Date</Text>
-                    <TouchableOpacity onPress={() => setShowCalendar(false)}>
-                      <Text style={styles.iosDoneText}>Done</Text>
-                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowCalendar(false)}><Text style={styles.iosDoneText}>Done</Text></TouchableOpacity>
                   </View>
                 )}
-                <DateTimePicker
-                  value={selectedRawDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'inline' : 'calendar'}
-                  minimumDate={new Date()} 
-                  onChange={onCalendarChange}
-                  themeVariant="dark"
-                />
+                <DateTimePicker value={selectedRawDate} mode="date" display={Platform.OS === 'ios' ? 'inline' : 'calendar'} minimumDate={new Date()} onChange={onCalendarChange} themeVariant="dark" />
               </View>
             )}
 
-            {/* CUSTOM STATIONERY THEME SELECTOR */}
             <Text style={styles.label}>Stationery Theme</Text>
             <View style={styles.themeSelectorContainer}>
               {Object.keys(THEMES).map((key) => {
                 const theme = THEMES[key];
                 const isSelected = themeInput === key;
                 return (
-                  <TouchableOpacity
-                    key={key}
-                    style={[
-                      styles.themeCard,
-                      { backgroundColor: theme.bg, borderColor: isSelected ? '#ffffff' : theme.border }
-                    ]}
-                    onPress={() => setThemeInput(key)}
-                  >
-                    <Text style={[styles.themeCardText, { color: theme.text, fontStyle: theme.fontStyle }]}>
-                      {theme.name}
-                    </Text>
+                  <TouchableOpacity key={key} style={[styles.themeCard, { backgroundColor: theme.bg, borderColor: isSelected ? '#ffffff' : theme.border }]} onPress={() => setThemeInput(key)}>
+                    <Text style={[styles.themeCardText, { color: theme.text, fontStyle: theme.fontStyle }]}>{theme.name}</Text>
                     {isSelected && <Text style={styles.themeChecked}>✓</Text>}
                   </TouchableOpacity>
                 );
@@ -506,44 +332,20 @@ export default function App() {
             <View style={styles.metaRow}>
               <View style={styles.metaCol}>
                 <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
-                <TextInput
-                  style={styles.metaInput}
-                  value={formatDisplayString(unlockInput)}
-                  editable={false} 
-                  placeholder="Select via dropdown"
-                  placeholderTextColor="#555"
-                />
+                <TextInput style={styles.metaInput} value={formatDisplayString(unlockInput)} editable={false} />
               </View>
               <View style={styles.metaCol}>
                 <Text style={styles.metaLabel}>CATEGORY</Text>
-                <TextInput
-                  style={styles.metaInput}
-                  value={categoryInput}
-                  onChangeText={setCategoryInput}
-                  placeholder="e.g. Goals"
-                  placeholderTextColor="#555"
-                />
+                <TextInput style={styles.metaInput} value={categoryInput} onChangeText={setCategoryInput} placeholder="e.g. Goals" placeholderTextColor="#555" />
               </View>
             </View>
 
             <Text style={styles.label}>The letter content</Text>
-            <TextInput
-              style={styles.textInputBody}
-              placeholder="Write down your thoughts, fears, dreams, or predictions..."
-              placeholderTextColor="#555"
-              multiline
-              textAlignVertical="top"
-              value={contentInput}
-              onChangeText={setContentInput}
-            />
+            <TextInput style={styles.textInputBody} placeholder="Write down your thoughts..." placeholderTextColor="#555" multiline textAlignVertical="top" value={contentInput} onChangeText={setContentInput} />
           </ScrollView>
 
           <View style={styles.floatingBottomRow}>
-            <TouchableOpacity 
-              style={styles.floatingSealButton} 
-              activeOpacity={0.8}
-              onPress={handleSaveLetter}
-            >
+            <TouchableOpacity style={styles.floatingSealButton} activeOpacity={0.8} onPress={handleSaveLetter}>
               <Text style={styles.floatingSealButtonText}>Seal Letter 🔒</Text>
             </TouchableOpacity>
           </View>
@@ -552,74 +354,43 @@ export default function App() {
     );
   }
 
-  // --- SCREEN 3: DETAIL SCREEN (LOCKED or UNLOCKED) ---
+  // --- SCREEN 3: DETAIL SCREEN ---
   if (currentScreen === 'detail' && selectedLetter) {
     const unlocked = isLetterUnlocked(selectedLetter.unlockDate);
-    // Fetch theme settings with a safety fallback to classic
     const activeTheme = THEMES[selectedLetter.theme] || THEMES.classic;
 
     return (
       <SafeAreaView style={[styles.container, unlocked && { backgroundColor: activeTheme.bg }]}>
         <View style={[styles.createHeader, unlocked && { borderColor: activeTheme.border }]}>
-          <TouchableOpacity onPress={() => setCurrentScreen('home')}>
-            <Text style={[styles.backButtonText, unlocked && { color: activeTheme.accent }]}>⬅ Back</Text>
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setCurrentScreen('home')}><Text style={[styles.backButtonText, unlocked && { color: activeTheme.accent }]}>⬅ Back</Text></TouchableOpacity>
           <Text style={styles.createTitle}>Letter Vault</Text>
-          <TouchableOpacity onPress={() => handleDeleteLetter(selectedLetter.id)}>
-            <Text style={styles.trashText}>🗑️ Discard</Text>
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => handleDeleteLetter(selectedLetter)}><Text style={styles.trashText}>🗑️ Discard</Text></TouchableOpacity>
         </View>
 
         {unlocked ? (
-          /* UNLOCKED VIEW: READ THE THEMED LETTER */
           <ScrollView contentContainerStyle={styles.detailContainer}>
             <View style={styles.unlockedHeader}>
-              <View style={[styles.unlockedCategoryBadge, { backgroundColor: activeTheme.accent + '25' }]}>
-                <Text style={[styles.unlockedCategoryText, { color: activeTheme.accent }]}>
-                  {selectedLetter.category}
-                </Text>
-              </View>
+              <View style={[styles.unlockedCategoryBadge, { backgroundColor: activeTheme.accent + '25' }]}><Text style={[styles.unlockedCategoryText, { color: activeTheme.accent }]}>{selectedLetter.category}</Text></View>
               <Text style={styles.unlockedDateText}>Unsealed on {formatDisplayString(selectedLetter.unlockDate)}</Text>
             </View>
-
             <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
-            
-            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}>
-              <Text style={[
-                styles.letterPaperText, 
-                { color: activeTheme.text, fontStyle: activeTheme.fontStyle }
-              ]}>
-                {selectedLetter.content}
-              </Text>
-            </View>
+            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}><Text style={[styles.letterPaperText, { color: activeTheme.text, fontStyle: activeTheme.fontStyle }]}>{selectedLetter.content}</Text></View>
           </ScrollView>
         ) : (
-          /* LOCKED VIEW */
           <View style={styles.lockedContainer}>
-            <View style={styles.padlockCircle}>
-              <Text style={styles.padlockEmoji}>🔒</Text>
-            </View>
-            
+            <View style={styles.padlockCircle}><Text style={styles.padlockEmoji}>🔒</Text></View>
             <Text style={styles.lockedWarningTitle}>This Letter is Sealed</Text>
-            <Text style={styles.lockedWarningSubtitle}>
-              You wrote this with a promise not to open it before the unlock date. No peeking!
-            </Text>
-
+            <Text style={styles.lockedWarningSubtitle}>You wrote this with a promise not to open it before the unlock date. No peeking!</Text>
             <View style={styles.lockDetailsCard}>
               <Text style={styles.lockDetailsLabel}>DESTINATION DATE</Text>
               <Text style={styles.lockDetailsValue}>{formatDisplayString(selectedLetter.unlockDate)}</Text>
-              
               <View style={styles.lockedSeparator} />
-              
               <Text style={styles.lockDetailsLabel}>CATEGORY</Text>
               <Text style={styles.lockDetailsValue}>{selectedLetter.category}</Text>
-
               <View style={styles.lockedSeparator} />
-              
               <Text style={styles.lockDetailsLabel}>STATIONERY THEME</Text>
               <Text style={styles.lockDetailsValue}>🎨 {activeTheme.name}</Text>
             </View>
-
             <Text style={styles.lockedTagline}>⏳ Access will be granted automatically on release day.</Text>
           </View>
         )}
@@ -631,547 +402,94 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#121212',
-  },
-  scrollContainer: {
-    paddingBottom: 40,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 64 : 48, 
-    paddingBottom: 12,
-  },
-  welcomeText: {
-    fontSize: 14,
-    color: '#888888',
-  },
-  titleText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginTop: 2,
-  },
-  taglineText: {
-    fontSize: 14,
-    fontStyle: 'italic',
-    color: '#bb86fc',
-    marginTop: 6,
-  },
-  heroContainer: {
-    paddingHorizontal: 20,
-    marginTop: 16,
-  },
-  heroCard: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(187, 134, 252, 0.2)',
-  },
-  heroHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  heroBadgeText: {
-    color: '#bb86fc',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  milestoneTag: {
-    backgroundColor: '#bb86fc',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 'auto',
-  },
-  milestoneText: {
-    color: '#121212',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  heroTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 12,
-  },
-  countdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 16,
-  },
-  timeBox: {
-    flex: 1,
-    backgroundColor: '#2d2d2d',
-    borderRadius: 12,
-    paddingVertical: 8,
-    marginHorizontal: 2, 
-    alignItems: 'center',
-  },
-  timeVal: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  timeLabel: {
-    color: '#888888',
-    fontSize: 9,
-    textTransform: 'uppercase',
-    marginTop: 2,
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 16,
-  },
-  tileButton: {
-    width: '48%',
-    backgroundColor: '#1e1e1e',
-    borderRadius: 16,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-  },
-  tileLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  iconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(187, 134, 252, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-  },
-  tileIcon: {
-    fontSize: 14,
-  },
-  tileLabel: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  tileCount: {
-    color: '#888888',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  buttonContainer: {
-    paddingHorizontal: 20,
-    marginTop: 8,
-  },
-  writeButton: {
-    backgroundColor: '#bb86fc',
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  writeButtonText: {
-    color: '#121212',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  sealedSection: {
-    paddingHorizontal: 20,
-    marginTop: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    color: '#888888',
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  seeAllText: {
-    color: '#bb86fc',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  lettersList: {
-    gap: 12,
-  },
-  letterCard: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-  },
-  letterLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  lockIcon: {
-    fontSize: 18,
-    marginRight: 12,
-  },
-  letterTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  letterSubtitle: {
-    color: '#888888',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  categoryBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  categoryText: {
-    color: '#888888',
-    fontSize: 11,
-  },
-  unlockedBadge: {
-    backgroundColor: 'rgba(0, 230, 118, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  unlockedBadgeText: {
-    color: '#00e676',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  
-  // --- CREATE/DETAIL HEADER ---
-  createHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 64 : 48,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderColor: '#2d2d2d',
-  },
-  cancelText: {
-    color: '#ff5c5c',
-    fontSize: 16,
-    fontWeight: '500',
-    width: 80,
-  },
-  backButtonText: {
-    color: '#bb86fc',
-    fontSize: 16,
-    fontWeight: '500',
-    width: 80,
-  },
-  trashText: {
-    color: '#ff5c5c',
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'right',
-    width: 80,
-  },
-  createTitle: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  formContainer: {
-    padding: 20,
-    paddingBottom: 140, 
-  },
-  label: {
-    color: '#888888',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 8,
-    marginTop: 16,
-  },
-  textInputTitle: {
-    color: '#ffffff',
-    fontSize: 20,
-    fontWeight: '600',
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-  },
-  dropdownSelector: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dropdownSelectorText: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
-  dropdownHighlight: {
-    color: '#bb86fc',
-    fontWeight: '700',
-  },
-  dropdownArrow: {
-    color: '#888888',
-    fontSize: 12,
-  },
-  dropdownMenu: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: '#3a3a3a',
-    overflow: 'hidden',
-  },
-  dropdownItem: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d2d',
-  },
-  dropdownItemText: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
-  calendarWrapper: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 16,
-    padding: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#bb86fc',
-  },
-  iosCalendarHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 8,
-    marginBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2d2d2d',
-  },
-  iosCalendarTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  iosDoneText: {
-    color: '#bb86fc',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  // --- THEME SELECTOR GRID ---
-  themeSelectorContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 8,
-    marginTop: 4,
-  },
-  themeCard: {
-    width: '48%',
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 2,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  themeCardText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  themeChecked: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  metaCol: {
-    width: '48%',
-  },
-  metaLabel: {
-    color: '#888888',
-    fontSize: 10,
-    letterSpacing: 1,
-    marginBottom: 6,
-    marginTop: 8,
-  },
-  metaInput: {
-    color: '#aaaaaa',
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-    fontSize: 14,
-  },
-  textInputBody: {
-    color: '#ffffff',
-    fontSize: 16,
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    padding: 14,
-    height: 180,
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-    lineHeight: 24,
-  },
-  floatingBottomRow: {
-    position: 'absolute',
-    bottom: 24,
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  floatingSealButton: {
-    backgroundColor: '#bb86fc',
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    borderRadius: 24,
-    shadowColor: '#bb86fc',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  floatingSealButtonText: {
-    color: '#121212',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-
-  // --- DETAIL VIEW STYLES ---
-  detailContainer: {
-    padding: 20,
-  },
-  unlockedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  unlockedCategoryBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  unlockedCategoryText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  unlockedDateText: {
-    color: '#888888',
-    fontSize: 13,
-  },
-  detailLetterTitle: {
-    color: '#ffffff',
-    fontSize: 26,
-    fontWeight: '700',
-    marginBottom: 20,
-  },
-  letterPaper: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
-    minHeight: 250,
-  },
-  letterPaperText: {
-    fontSize: 16,
-    lineHeight: 26,
-  },
-
-  // --- LOCKED VAULT VIEW STYLES ---
-  lockedContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 30,
-    paddingBottom: 60,
-  },
-  padlockCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(187, 134, 252, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-    borderWidth: 1.5,
-    borderColor: '#bb86fc',
-  },
-  padlockEmoji: {
-    fontSize: 48,
-  },
-  lockedWarningTitle: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  lockedWarningSubtitle: {
-    color: '#888888',
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  lockDetailsCard: {
-    backgroundColor: '#1e1e1e',
-    borderWidth: 1,
-    borderColor: '#2d2d2d',
-    borderRadius: 16,
-    width: '100%',
-    padding: 20,
-    marginBottom: 32,
-  },
-  lockDetailsLabel: {
-    color: '#888888',
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 1,
-    marginBottom: 6,
-  },
-  lockDetailsValue: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  lockedSeparator: {
-    height: 1,
-    backgroundColor: '#2d2d2d',
-    marginVertical: 14,
-  },
-  lockedTagline: {
-    color: '#bb86fc',
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  container: { flex: 1, backgroundColor: '#121212' },
+  scrollContainer: { paddingBottom: 40 },
+  header: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 64 : 48, paddingBottom: 12 },
+  welcomeText: { fontSize: 14, color: '#888888' },
+  titleText: { fontSize: 32, fontWeight: '700', color: '#ffffff', marginTop: 2 },
+  taglineText: { fontSize: 14, fontStyle: 'italic', color: '#bb86fc', marginTop: 6 },
+  heroContainer: { paddingHorizontal: 20, marginTop: 16 },
+  heroCard: { backgroundColor: '#1e1e1e', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(187, 134, 252, 0.2)' },
+  heroHeader: { flexDirection: 'row', alignItems: 'center' },
+  heroBadgeText: { color: '#bb86fc', fontSize: 11, fontWeight: '600', letterSpacing: 1 },
+  milestoneTag: { backgroundColor: '#bb86fc', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginLeft: 'auto' },
+  milestoneText: { color: '#121212', fontSize: 11, fontWeight: '700' },
+  heroTitle: { color: '#ffffff', fontSize: 20, fontWeight: '600', marginTop: 12 },
+  countdownRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 },
+  timeBox: { flex: 1, backgroundColor: '#2d2d2d', borderRadius: 12, paddingVertical: 8, marginHorizontal: 2, alignItems: 'center' },
+  timeVal: { color: '#ffffff', fontSize: 18, fontWeight: '700' },
+  timeLabel: { color: '#888888', fontSize: 9, textTransform: 'uppercase', marginTop: 2 },
+  gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 16 },
+  tileButton: { width: '48%', backgroundColor: '#1e1e1e', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, borderWidth: 1, borderColor: '#2d2d2d' },
+  tileLeft: { flexDirection: 'row', alignItems: 'center' },
+  iconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(187, 134, 252, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  tileIcon: { fontSize: 14 },
+  tileLabel: { color: '#ffffff', fontSize: 14, fontWeight: '500' },
+  tileCount: { color: '#888888', fontSize: 14, fontWeight: '600' },
+  buttonContainer: { paddingHorizontal: 20, marginTop: 8 },
+  writeButton: { backgroundColor: '#bb86fc', paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  writeButtonText: { color: '#121212', fontSize: 16, fontWeight: '600' },
+  sealedSection: { paddingHorizontal: 20, marginTop: 24 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  sectionTitle: { color: '#888888', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
+  seeAllText: { color: '#bb86fc', fontSize: 12, fontWeight: '500' },
+  lettersList: { gap: 12 },
+  letterCard: { backgroundColor: '#1e1e1e', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#2d2d2d' },
+  letterLeft: { flexDirection: 'row', alignItems: 'center' },
+  lockIcon: { fontSize: 18, marginRight: 12 },
+  letterTitle: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  letterSubtitle: { color: '#888888', fontSize: 12, marginTop: 2 },
+  categoryBadge: { backgroundColor: 'rgba(255, 255, 255, 0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  categoryText: { color: '#888888', fontSize: 11 },
+  unlockedBadge: { backgroundColor: 'rgba(0, 230, 118, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  unlockedBadgeText: { color: '#00e676', fontSize: 11, fontWeight: '600' },
+  createHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 64 : 48, paddingBottom: 20, borderBottomWidth: 1, borderColor: '#2d2d2d' },
+  cancelText: { color: '#ff5c5c', fontSize: 16, fontWeight: '500', width: 80 },
+  backButtonText: { color: '#bb86fc', fontSize: 16, fontWeight: '500', width: 80 },
+  trashText: { color: '#ff5c5c', fontSize: 15, fontWeight: '600', textAlign: 'right', width: 80 },
+  createTitle: { color: '#ffffff', fontSize: 18, fontWeight: '600' },
+  formContainer: { padding: 20, paddingBottom: 140 },
+  label: { color: '#888888', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, marginTop: 16 },
+  textInputTitle: { color: '#ffffff', fontSize: 20, fontWeight: '600', backgroundColor: '#1e1e1e', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#2d2d2d' },
+  dropdownSelector: { backgroundColor: '#1e1e1e', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#2d2d2d', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dropdownSelectorText: { color: '#ffffff', fontSize: 14 },
+  dropdownHighlight: { color: '#bb86fc', fontWeight: '700' },
+  dropdownArrow: { color: '#888888', fontSize: 12 },
+  dropdownMenu: { backgroundColor: '#1e1e1e', borderRadius: 12, marginTop: 4, borderWidth: 1, borderColor: '#3a3a3a', overflow: 'hidden' },
+  dropdownItem: { padding: 14, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' },
+  dropdownItemText: { color: '#ffffff', fontSize: 14 },
+  calendarWrapper: { backgroundColor: '#1e1e1e', borderRadius: 16, padding: 12, marginTop: 8, borderWidth: 1, borderColor: '#bb86fc' },
+  iosCalendarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#2d2d2d' },
+  iosCalendarTitle: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  iosDoneText: { color: '#bb86fc', fontSize: 14, fontWeight: '700' },
+  themeSelectorContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8, marginTop: 4 },
+  themeCard: { width: '48%', padding: 14, borderRadius: 12, borderWidth: 2, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  themeCardText: { fontSize: 13, fontWeight: '600' },
+  themeChecked: { color: '#ffffff', fontSize: 14, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
+  metaCol: { width: '48%' },
+  metaLabel: { color: '#888888', fontSize: 10, letterSpacing: 1, marginBottom: 6, marginTop: 8 },
+  metaInput: { color: '#aaaaaa', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#2d2d2d', fontSize: 14 },
+  textInputBody: { color: '#ffffff', fontSize: 16, backgroundColor: '#1e1e1e', borderRadius: 12, padding: 14, height: 180, borderWidth: 1, borderColor: '#2d2d2d', lineHeight: 24 },
+  floatingBottomRow: { position: 'absolute', bottom: 24, left: 20, right: 20, flexDirection: 'row', justifyContent: 'flex-end' },
+  floatingSealButton: { backgroundColor: '#bb86fc', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, shadowColor: '#bb86fc', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  floatingSealButtonText: { color: '#121212', fontSize: 15, fontWeight: '700' },
+  detailContainer: { padding: 20 },
+  unlockedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  unlockedCategoryBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  unlockedCategoryText: { fontSize: 13, fontWeight: '600' },
+  unlockedDateText: { color: '#888888', fontSize: 13 },
+  detailLetterTitle: { color: '#ffffff', fontSize: 26, fontWeight: '700', marginBottom: 20 },
+  letterPaper: { borderWidth: 1, borderRadius: 16, padding: 20, minHeight: 250 },
+  letterPaperText: { fontSize: 16, lineHeight: 26 },
+  lockedContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, paddingBottom: 60 },
+  padlockCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(187, 134, 252, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1.5, borderColor: '#bb86fc' },
+  padlockEmoji: { fontSize: 48 },
+  lockedWarningTitle: { color: '#ffffff', fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 12 },
+  lockedWarningSubtitle: { color: '#888888', fontSize: 14, lineHeight: 20, textAlign: 'center', marginBottom: 32 },
+  lockDetailsCard: { backgroundColor: '#1e1e1e', borderWidth: 1, borderColor: '#2d2d2d', borderRadius: 16, width: '100%', padding: 20, marginBottom: 32 },
+  lockDetailsLabel: { color: '#888888', fontSize: 11, fontWeight: '600', letterSpacing: 1, marginBottom: 6 },
+  lockDetailsValue: { color: '#ffffff', fontSize: 18, fontWeight: '600' },
+  lockedSeparator: { height: 1, backgroundColor: '#2d2d2d', marginVertical: 14 },
+  lockedTagline: { color: '#bb86fc', fontSize: 13, fontWeight: '500' },
 });
