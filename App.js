@@ -22,9 +22,11 @@ const THEMES = {
 };
 
 export default function App() {
-  // Navigation & Form Input States
+  // Navigation States: 'home' | 'create' | 'detail' | 'edit'
   const [currentScreen, setCurrentScreen] = useState('home');
   const [selectedLetter, setSelectedLetter] = useState(null);
+  
+  // Form Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
   const [unlockInput, setUnlockInput] = useState(new Date().toISOString().split('T')[0]); 
@@ -39,30 +41,34 @@ export default function App() {
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('All'); // 'All', 'Favorites', 'Future', 'School', 'Instant', etc.
+  const [activeFilter, setActiveFilter] = useState('All'); // 'All' | 'Favorites' | 'Archived' | 'Drafts'
+  const [selectedCategory, setSelectedCategory] = useState('All'); // For the category pill filter
 
   // Letters Database State
   const [sealedLetters, setSealedLetters] = useState([
-    { id: 1, title: "My Goals for this Summer", unlockDate: "2026-08-31", category: "Personal", theme: "moss", content: "Hey future self! Did you end up going on that road trip?", favorite: true, archived: false },
-    { id: 2, title: "Message to Me in 5 Years", unlockDate: "2031-07-14", category: "Future", theme: "parchment", content: "Hello from 2026! You are officially 5 years older now.", favorite: true, archived: false },
-    { id: 3, title: "Advice for College Entry", unlockDate: "2027-09-01", category: "School", theme: "classic", content: "College is starting! Take a deep breath.", favorite: false, archived: false },
-    { id: 4, title: "Note to self (Unlocked!)", unlockDate: "2026-01-01", category: "Instant", theme: "neon", content: "This is a letter from the past that you can read right now.", favorite: true, archived: true }
+    { id: 1, title: "My Goals for this Summer", unlockDate: "2026-08-31", category: "Personal", theme: "moss", content: "Hey self! Remember to keep working on your coding projects.", favorite: true, archived: false, isDraft: true, lastModified: "Jul 14, 2026" },
+    { id: 2, title: "Message to Me in 5 Years", unlockDate: "2031-07-14", category: "Future", theme: "parchment", content: "Hello from 2026! You are officially 5 years older now.", favorite: true, archived: false, isDraft: false, lastModified: "Jul 14, 2026" },
+    { id: 3, title: "Reminder: Call your grandparents!", unlockDate: "2026-07-20", category: "Personal", theme: "classic", content: "Just a quick reminder to check in with them.", favorite: false, archived: false, isDraft: true, lastModified: "Jul 14, 2026" },
+    { id: 4, title: "Next Semester Checklist", unlockDate: "2026-09-01", category: "School", theme: "neon", content: "Get textbooks and organize the weekly schedule.", favorite: false, archived: false, isDraft: true, lastModified: "Jul 14, 2026" }
   ]);
 
   const [countdown, setCountdown] = useState({ title: "No upcoming letters", years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
 
-  // Dynamic Tile Counts based on letter states
+  // Dynamically extract all unique categories present in our database
+  const availableCategories = ['All', ...new Set(sealedLetters.map(l => l.category))];
+
+  // Dynamic Tile Counts
   const favoriteCount = sealedLetters.filter(l => l.favorite && !l.archived).length;
+  const draftCount = sealedLetters.filter(l => l.isDraft).length;
   const archivedCount = sealedLetters.filter(l => l.archived).length;
-  const uniqueCategories = Array.from(new Set(sealedLetters.map(l => l.category))).length;
 
   const tiles = [
     { id: 'Favorites', label: 'Favorites', icon: '⭐', count: favoriteCount },
-    { id: 'Categories', label: 'Categories', icon: '📁', count: uniqueCategories },
+    { id: 'Drafts', label: 'Reminders', icon: '📝', count: draftCount },
     { id: 'Archived', label: 'Archive', icon: '📦', count: archivedCount }
   ];
 
-  // Safe manual parse helper
+  // Date Parsing Helpers
   const parseDateSafely = (dateStr) => {
     const parts = dateStr.split('-');
     return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0);
@@ -80,12 +86,16 @@ export default function App() {
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const getFormattedToday = () => {
+    return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
   // --- LIVE TIMER ENGINE EFFECT ---
   useEffect(() => {
     const updateTimer = () => {
-      const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate) && !l.archived);
+      const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate) && !l.archived && !l.isDraft);
       if (lockedLetters.length === 0) {
-        setCountdown({ title: "All letters unlocked! 🎉", years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
+        setCountdown({ title: "No locked letters 🔑", years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
         return;
       }
 
@@ -133,34 +143,30 @@ export default function App() {
   // Filtering Logic
   const getFilteredLetters = () => {
     return sealedLetters.filter(letter => {
-      // 1. Check Search Query
       const matchesSearch = 
         letter.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
         letter.content.toLowerCase().includes(searchQuery.toLowerCase());
 
-      // 2. Check Active Tile Filters
+      const matchesCategory = 
+        selectedCategory === 'All' || letter.category.toLowerCase() === selectedCategory.toLowerCase();
+
+      let matchesTileFilter = true;
       if (activeFilter === 'Favorites') {
-        return matchesSearch && letter.favorite && !letter.archived;
+        matchesTileFilter = letter.favorite && !letter.archived;
+      } else if (activeFilter === 'Drafts') {
+        matchesTileFilter = letter.isDraft && !letter.archived;
+      } else if (activeFilter === 'Archived') {
+        matchesTileFilter = letter.archived;
+      } else {
+        matchesTileFilter = !letter.archived;
       }
-      if (activeFilter === 'Archived') {
-        return matchesSearch && letter.archived;
-      }
-      if (activeFilter === 'Categories') {
-        // Just show all non-archived sorted by category if they clicked categories
-        return matchesSearch && !letter.archived;
-      }
-      
-      // Default: Hide archived from the main dashboard "All" view
-      return matchesSearch && !letter.archived;
+
+      return matchesSearch && matchesCategory && matchesTileFilter;
     });
   };
 
   const handleTilePress = (tileId) => {
-    if (activeFilter === tileId) {
-      setActiveFilter('All'); // Toggle off back to main list
-    } else {
-      setActiveFilter(tileId);
-    }
+    setActiveFilter(activeFilter === tileId ? 'All' : tileId);
   };
 
   const toggleFavorite = (id) => {
@@ -203,26 +209,93 @@ export default function App() {
     }
   };
 
-  const handleSaveLetter = () => {
+  // Save new letter
+  const handleSaveLetter = (sealImmediately) => {
     if (!titleInput.trim()) return alert("Please give your letter a title!");
 
     const newLetter = {
       id: Date.now(), 
       title: titleInput,
       unlockDate: unlockInput,
-      category: categoryInput,
+      category: categoryInput.trim() || "General",
       theme: themeInput,
       content: contentInput || "No content written.",
       favorite: false,
-      archived: false
+      archived: false,
+      isDraft: !sealImmediately,
+      lastModified: getFormattedToday()
     };
 
     setSealedLetters([newLetter, ...sealedLetters]); 
+    resetForm();
+    setCurrentScreen('home');
+  };
+
+  // Save edits
+  const handleUpdateLetter = (sealImmediately) => {
+    if (!titleInput.trim()) return alert("Please give your letter a title!");
+
+    setSealedLetters(sealedLetters.map(l => {
+      if (l.id === selectedLetter.id) {
+        return {
+          ...l,
+          title: titleInput,
+          content: contentInput,
+          unlockDate: unlockInput,
+          category: categoryInput.trim() || "General",
+          theme: themeInput,
+          isDraft: !sealImmediately,
+          lastModified: getFormattedToday()
+        };
+      }
+      return l;
+    }));
+
+    resetForm();
+    setCurrentScreen('home');
+    setSelectedLetter(null);
+  };
+
+  const handleSealDraftFromDetail = (letter) => {
+    Alert.alert(
+      "Lock & Seal Letter 🔒",
+      "Sealing this letter means you will NOT be able to open or read it again until the selected unlock date. Do you want to proceed?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Lock It",
+          onPress: () => {
+            setSealedLetters(sealedLetters.map(l => 
+              l.id === letter.id ? { ...l, isDraft: false, lastModified: getFormattedToday() } : l
+            ));
+            setCurrentScreen('home');
+            setSelectedLetter(null);
+          }
+        }
+      ]
+    );
+  };
+
+  const startEditDraft = (letter) => {
+    setSelectedLetter(letter);
+    setTitleInput(letter.title);
+    setContentInput(letter.content);
+    setUnlockInput(letter.unlockDate);
+    setCategoryInput(letter.category);
+    setThemeInput(letter.theme);
+    setSelectedRawDate(parseDateSafely(letter.unlockDate));
+    setActivePreset('Custom Date');
+    setCurrentScreen('edit');
+  };
+
+  const resetForm = () => {
     setTitleInput('');
     setContentInput('');
     setThemeInput('classic');
+    setCategoryInput('Personal');
+    setUnlockInput(new Date().toISOString().split('T')[0]);
+    setSelectedRawDate(new Date());
     setActivePreset('Custom');
-    setCurrentScreen('home');
   };
 
   const handleSelectLetter = (letter) => {
@@ -267,7 +340,7 @@ export default function App() {
           <View style={styles.heroContainer}>
             <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
               <View style={styles.heroHeader}>
-                <Text style={styles.heroBadgeText}>⏳ NEXT TO ARRIVE</Text>
+                <Text style={styles.heroBadgeText}>⏳ NEXT LOCKED LETTER</Text>
                 <View style={styles.milestoneTag}>
                   <Text style={styles.milestoneText}>Future</Text>
                 </View>
@@ -314,28 +387,41 @@ export default function App() {
             })}
           </View>
 
-          {/* SEARCH BAR & FILTER INDICATORS */}
+          {/* SEARCH BAR */}
           <View style={styles.searchContainer}>
             <TextInput 
               style={styles.searchBar} 
-              placeholder="🔍 Search letters by title or content..." 
+              placeholder="🔍 Search reminders or letters..." 
               placeholderTextColor="#888"
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
-            {activeFilter !== 'All' && (
-              <View style={styles.activeFilterRow}>
-                <Text style={styles.filterLabel}>Filtering by: <Text style={styles.filterHighlight}>{activeFilter}</Text></Text>
-                <TouchableOpacity onPress={() => setActiveFilter('All')}>
-                  <Text style={styles.clearFilterText}>Clear Filter ✕</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+          </View>
+
+          {/* NEW: HORIZONTAL CATEGORY SELECTOR PILLS */}
+          <View style={styles.categoryPillsWrapper}>
+            <Text style={styles.categoryPillsTitle}>Categories</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.pillsScrollContent}>
+              {availableCategories.map((cat) => {
+                const isSelected = selectedCategory === cat;
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.pillButton, isSelected && styles.pillButtonActive]}
+                    onPress={() => setSelectedCategory(cat)}
+                  >
+                    <Text style={[styles.pillButtonText, isSelected && styles.pillButtonTextActive]}>
+                      {cat === 'All' ? '📂 All categories' : cat}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.writeButton} activeOpacity={0.8} onPress={() => setCurrentScreen('create')}>
-              <Text style={styles.writeButtonText}>✍️ Write a new letter</Text>
+            <TouchableOpacity style={styles.writeButton} activeOpacity={0.8} onPress={() => { resetForm(); setCurrentScreen('create'); }}>
+              <Text style={styles.writeButtonText}>✍️ Write a reminder/letter</Text>
             </TouchableOpacity>
           </View>
 
@@ -343,7 +429,7 @@ export default function App() {
           <View style={styles.sealedSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>
-                {activeFilter === 'All' ? 'Sealed letters' : `${activeFilter} letters`} ({filteredLetters.length})
+                {selectedCategory !== 'All' ? `📁 Category: ${selectedCategory}` : 'Your Feed'} ({filteredLetters.length})
               </Text>
             </View>
             
@@ -353,27 +439,30 @@ export default function App() {
                   const unlocked = isLetterUnlocked(letter.unlockDate);
                   return (
                     <TouchableOpacity key={letter.id} style={styles.letterCard} activeOpacity={0.7} onPress={() => handleSelectLetter(letter)}>
-                      <View style={styles.letterLeft}>
-                        <Text style={styles.lockIcon}>{unlocked ? '🔓' : '🔒'}</Text>
-                        <View style={{ flexShrink: 1 }}>
-                          <View style={styles.titleRow}>
-                            <Text style={styles.letterTitle} numberOfLines={1}>{letter.title}</Text>
-                            {letter.favorite && <Text style={styles.starMini}>⭐</Text>}
+                      <View style={letter.isDraft ? styles.indicatorLeftDraft : unlocked ? styles.indicatorLeftUnlocked : styles.indicatorLeftLocked} />
+                      <View style={styles.letterContentWrapper}>
+                        <View style={styles.letterLeft}>
+                          <Text style={styles.lockIcon}>{letter.isDraft ? '📝' : unlocked ? '🔓' : '🔒'}</Text>
+                          <View style={{ flexShrink: 1 }}>
+                            <View style={styles.titleRow}>
+                              <Text style={styles.letterTitle} numberOfLines={1}>{letter.title}</Text>
+                              {letter.favorite && <Text style={styles.starMini}>⭐</Text>}
+                            </View>
+                            <Text style={styles.letterSubtitle}>
+                              {letter.isDraft ? `Reminder • Tap to view/edit` : unlocked ? "Unlocked! Ready to read" : `Unlocks on ${formatDisplayString(letter.unlockDate)}`}
+                            </Text>
                           </View>
-                          <Text style={styles.letterSubtitle}>
-                            {unlocked ? "Unlocked! Ready to read" : `Unlocks on ${formatDisplayString(letter.unlockDate)}`}
-                          </Text>
                         </View>
-                      </View>
-                      <View style={unlocked ? styles.unlockedBadge : styles.categoryBadge}>
-                        <Text style={unlocked ? styles.unlockedBadgeText : styles.categoryText}>{letter.category}</Text>
+                        <View style={letter.isDraft ? styles.draftBadge : unlocked ? styles.unlockedBadge : styles.categoryBadge}>
+                          <Text style={letter.isDraft ? styles.draftBadgeText : unlocked ? styles.unlockedBadgeText : styles.categoryText}>{letter.category}</Text>
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
                 })
               ) : (
                 <View style={styles.emptyContainer}>
-                  <Text style={styles.emptyText}>No letters found matching your criteria. 📥</Text>
+                  <Text style={styles.emptyText}>No items found. 📥</Text>
                 </View>
               )}
             </View>
@@ -383,24 +472,26 @@ export default function App() {
     );
   }
 
-  // --- SCREEN 2: CREATE LETTER SCREEN ---
-  if (currentScreen === 'create') {
+  // --- SCREEN 2 & 4: CREATE & EDIT SCREENS ---
+  if (currentScreen === 'create' || currentScreen === 'edit') {
+    const isEditing = currentScreen === 'edit';
+
     return (
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
           <View style={styles.createHeader}>
-            <TouchableOpacity onPress={() => setCurrentScreen('home')}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
-            <Text style={styles.createTitle}>New Letter</Text>
+            <TouchableOpacity onPress={() => { resetForm(); setCurrentScreen('home'); }}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+            <Text style={styles.createTitle}>{isEditing ? 'Edit Content' : 'Write Reminder'}</Text>
             <View style={{ width: 80 }} /> 
           </View>
 
           <ScrollView contentContainerStyle={styles.formContainer} keyboardShouldPersistTaps="handled">
             <Text style={styles.label}>To my future self...</Text>
-            <TextInput style={styles.textInputTitle} placeholder="Give your letter a title" placeholderTextColor="#555" value={titleInput} onChangeText={setTitleInput} />
+            <TextInput style={styles.textInputTitle} placeholder="Give your reminder a title" placeholderTextColor="#555" value={titleInput} onChangeText={setTitleInput} />
 
-            <Text style={styles.label}>When should this unlock?</Text>
+            <Text style={styles.label}>Unlock Date (If you choose to lock it)</Text>
             <TouchableOpacity style={styles.dropdownSelector} activeOpacity={0.8} onPress={() => setShowDropdown(!showDropdown)}>
-              <Text style={styles.dropdownSelectorText}>📅 Option: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({formatDisplayString(unlockInput)})</Text>
+              <Text style={styles.dropdownSelectorText}>📅 Target: <Text style={styles.dropdownHighlight}>{activePreset}</Text> ({formatDisplayString(unlockInput)})</Text>
               <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
             </TouchableOpacity>
 
@@ -441,7 +532,7 @@ export default function App() {
 
             <View style={styles.metaRow}>
               <View style={styles.metaCol}>
-                <Text style={styles.metaLabel}>EXACT UNLOCK DATE</Text>
+                <Text style={styles.metaLabel}>REMINDER UNLOCK DATE</Text>
                 <TextInput style={styles.metaInput} value={formatDisplayString(unlockInput)} editable={false} />
               </View>
               <View style={styles.metaCol}>
@@ -450,13 +541,17 @@ export default function App() {
               </View>
             </View>
 
-            <Text style={styles.label}>The letter content</Text>
+            <Text style={styles.label}>The reminder content</Text>
             <TextInput style={styles.textInputBody} placeholder="Write down your thoughts..." placeholderTextColor="#555" multiline textAlignVertical="top" value={contentInput} onChangeText={setContentInput} />
           </ScrollView>
 
-          <View style={styles.floatingBottomRow}>
-            <TouchableOpacity style={styles.floatingSealButton} activeOpacity={0.8} onPress={handleSaveLetter}>
-              <Text style={styles.floatingSealButtonText}>Seal Letter 🔒</Text>
+          {/* DUAL FLOATING ACTIONS */}
+          <View style={styles.doubleButtonRow}>
+            <TouchableOpacity style={styles.draftButton} activeOpacity={0.8} onPress={() => isEditing ? handleUpdateLetter(false) : handleSaveLetter(false)}>
+              <Text style={styles.draftButtonText}>💾 Save Reminder</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.floatingSealButton} activeOpacity={0.8} onPress={() => isEditing ? handleUpdateLetter(true) : handleSaveLetter(true)}>
+              <Text style={styles.floatingSealButtonText}>Seal & Lock 🔒</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -470,14 +565,45 @@ export default function App() {
     const activeTheme = THEMES[selectedLetter.theme] || THEMES.classic;
 
     return (
-      <SafeAreaView style={[styles.container, unlocked && { backgroundColor: activeTheme.bg }]}>
-        <View style={[styles.createHeader, unlocked && { borderColor: activeTheme.border }]}>
-          <TouchableOpacity onPress={() => setCurrentScreen('home')}><Text style={[styles.backButtonText, unlocked && { color: activeTheme.accent }]}>⬅ Back</Text></TouchableOpacity>
+      <SafeAreaView style={[styles.container, (unlocked || selectedLetter.isDraft) && { backgroundColor: activeTheme.bg }]}>
+        <View style={[styles.createHeader, (unlocked || selectedLetter.isDraft) && { borderColor: activeTheme.border }]}>
+          <TouchableOpacity onPress={() => setCurrentScreen('home')}><Text style={[styles.backButtonText, (unlocked || selectedLetter.isDraft) && { color: activeTheme.accent }]}>⬅ Back</Text></TouchableOpacity>
           <Text style={styles.createTitle}>Letter Vault</Text>
           <TouchableOpacity onPress={() => handleDeleteLetter(selectedLetter)}><Text style={styles.trashText}>🗑️ Discard</Text></TouchableOpacity>
         </View>
 
-        {unlocked ? (
+        {/* DRAFT REMINDER VIEW: ALWAYS READABLE & EDITABLE */}
+        {selectedLetter.isDraft ? (
+          <ScrollView contentContainerStyle={styles.detailContainer}>
+            <View style={styles.unlockedHeader}>
+              <View style={[styles.unlockedCategoryBadge, { backgroundColor: activeTheme.accent + '25' }]}><Text style={[styles.unlockedCategoryText, { color: activeTheme.accent }]}>{selectedLetter.category} (Reminder)</Text></View>
+              <Text style={styles.unlockedDateText}>Draft last saved: {selectedLetter.lastModified}</Text>
+            </View>
+            
+            <View style={styles.headerActionRow}>
+              <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
+              <View style={styles.iconButtons}>
+                <TouchableOpacity onPress={() => toggleFavorite(selectedLetter.id)} style={styles.actionIconButton}>
+                  <Text style={styles.actionIcon}>{selectedLetter.favorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}>
+              <Text style={[styles.letterPaperText, { color: activeTheme.text, fontStyle: activeTheme.fontStyle }]}>{selectedLetter.content}</Text>
+            </View>
+
+            <View style={styles.draftDetailActionRow}>
+              <TouchableOpacity style={styles.editDraftBtn} onPress={() => startEditDraft(selectedLetter)}>
+                <Text style={styles.editDraftBtnText}>✏️ Edit content</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.sealDraftBtn} onPress={() => handleSealDraftFromDetail(selectedLetter)}>
+                <Text style={styles.sealDraftBtnText}>Lock & Seal 🔒</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        ) : unlocked ? (
+          /* UNLOCKED PERMANENT STATE */
           <ScrollView contentContainerStyle={styles.detailContainer}>
             <View style={styles.unlockedHeader}>
               <View style={[styles.unlockedCategoryBadge, { backgroundColor: activeTheme.accent + '25' }]}><Text style={[styles.unlockedCategoryText, { color: activeTheme.accent }]}>{selectedLetter.category}</Text></View>
@@ -501,6 +627,7 @@ export default function App() {
             </View>
           </ScrollView>
         ) : (
+          /* FULLY LOCKED STATE */
           <View style={styles.lockedContainer}>
             <View style={styles.padlockCircle}><Text style={styles.padlockEmoji}>🔒</Text></View>
             <Text style={styles.lockedWarningTitle}>This Letter is Sealed</Text>
@@ -571,10 +698,15 @@ const styles = StyleSheet.create({
   // Search Bar
   searchContainer: { paddingHorizontal: 20, marginVertical: 8 },
   searchBar: { backgroundColor: '#1e1e1e', color: '#ffffff', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: '#2d2d2d', fontSize: 14 },
-  activeFilterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingHorizontal: 4 },
-  filterLabel: { color: '#888888', fontSize: 12 },
-  filterHighlight: { color: '#bb86fc', fontWeight: '700' },
-  clearFilterText: { color: '#ff5c5c', fontSize: 12, fontWeight: '600' },
+
+  // Category Pills Styles
+  categoryPillsWrapper: { paddingHorizontal: 20, marginVertical: 12 },
+  categoryPillsTitle: { color: '#888888', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 },
+  pillsScrollContent: { gap: 8, paddingRight: 20 },
+  pillButton: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1e1e1e', borderWidth: 1, borderColor: '#2d2d2d' },
+  pillButtonActive: { backgroundColor: '#bb86fc', borderColor: '#bb86fc' },
+  pillButtonText: { color: '#aaaaaa', fontSize: 13, fontWeight: '500' },
+  pillButtonTextActive: { color: '#121212', fontWeight: '700' },
   
   // Write Button
   buttonContainer: { paddingHorizontal: 20, marginTop: 8 },
@@ -586,7 +718,11 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { color: '#888888', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
   lettersList: { gap: 12 },
-  letterCard: { backgroundColor: '#1e1e1e', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#2d2d2d' },
+  letterCard: { backgroundColor: '#1e1e1e', borderRadius: 16, flexDirection: 'row', overflow: 'hidden', borderWidth: 1, borderColor: '#2d2d2d' },
+  indicatorLeftDraft: { width: 6, backgroundColor: '#bb86fc' },
+  indicatorLeftUnlocked: { width: 6, backgroundColor: '#00e676' },
+  indicatorLeftLocked: { width: 6, backgroundColor: '#3a3a3a' },
+  letterContentWrapper: { flex: 1, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   letterLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   titleRow: { flexDirection: 'row', alignItems: 'center' },
   starMini: { fontSize: 12, marginLeft: 6 },
@@ -597,10 +733,12 @@ const styles = StyleSheet.create({
   categoryText: { color: '#888888', fontSize: 11 },
   unlockedBadge: { backgroundColor: 'rgba(0, 230, 118, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
   unlockedBadgeText: { color: '#00e676', fontSize: 11, fontWeight: '600' },
+  draftBadge: { backgroundColor: 'rgba(187, 134, 252, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
+  draftBadgeText: { color: '#bb86fc', fontSize: 11, fontWeight: '600' },
   emptyContainer: { alignItems: 'center', paddingVertical: 32 },
   emptyText: { color: '#555555', fontSize: 14, textAlign: 'center' },
 
-  // Forms & Modals
+  // Forms
   createHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 64 : 48, paddingBottom: 20, borderBottomWidth: 1, borderColor: '#2d2d2d' },
   cancelText: { color: '#ff5c5c', fontSize: 16, fontWeight: '500', width: 80 },
   backButtonText: { color: '#bb86fc', fontSize: 16, fontWeight: '500', width: 80 },
@@ -629,8 +767,12 @@ const styles = StyleSheet.create({
   metaLabel: { color: '#888888', fontSize: 10, letterSpacing: 1, marginBottom: 6, marginTop: 8 },
   metaInput: { color: '#aaaaaa', backgroundColor: '#1a1a1a', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#2d2d2d', fontSize: 14 },
   textInputBody: { color: '#ffffff', fontSize: 16, backgroundColor: '#1e1e1e', borderRadius: 12, padding: 14, height: 180, borderWidth: 1, borderColor: '#2d2d2d', lineHeight: 24 },
-  floatingBottomRow: { position: 'absolute', bottom: 24, left: 20, right: 20, flexDirection: 'row', justifyContent: 'flex-end' },
-  floatingSealButton: { backgroundColor: '#bb86fc', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, shadowColor: '#bb86fc', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
+  
+  // Double Floating Action Buttons
+  doubleButtonRow: { position: 'absolute', bottom: 24, left: 20, right: 20, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  draftButton: { flex: 1, backgroundColor: '#2d2d2d', paddingVertical: 14, borderRadius: 24, alignItems: 'center', borderWidth: 1, borderColor: '#444' },
+  draftButtonText: { color: '#ffffff', fontSize: 15, fontWeight: '600' },
+  floatingSealButton: { flex: 1, backgroundColor: '#bb86fc', paddingVertical: 14, borderRadius: 24, alignItems: 'center', shadowColor: '#bb86fc', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   floatingSealButtonText: { color: '#121212', fontSize: 15, fontWeight: '700' },
   
   // Details screen
@@ -647,6 +789,13 @@ const styles = StyleSheet.create({
   letterPaper: { borderWidth: 1, borderRadius: 16, padding: 20, minHeight: 250 },
   letterPaperText: { fontSize: 16, lineHeight: 26 },
   
+  // Draft Details Action Row
+  draftDetailActionRow: { flexDirection: 'row', gap: 12, marginTop: 24 },
+  editDraftBtn: { flex: 1, backgroundColor: '#2d2d2d', paddingVertical: 14, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#444' },
+  editDraftBtnText: { color: '#ffffff', fontSize: 14, fontWeight: '600' },
+  sealDraftBtn: { flex: 1, backgroundColor: '#bb86fc', paddingVertical: 14, borderRadius: 16, alignItems: 'center' },
+  sealDraftBtnText: { color: '#121212', fontSize: 14, fontWeight: '700' },
+
   // Locked State
   lockedContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, paddingBottom: 60 },
   padlockCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(187, 134, 252, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1.5, borderColor: '#bb86fc' },
