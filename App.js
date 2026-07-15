@@ -37,18 +37,32 @@ export default function App() {
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
 
+  // Search & Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('All'); // 'All', 'Favorites', 'Future', 'School', 'Instant', etc.
+
   // Letters Database State
   const [sealedLetters, setSealedLetters] = useState([
-    { id: 1, title: "My Goals for this Summer", unlockDate: "2026-08-31", category: "Personal", theme: "moss", content: "Hey future self! Did you end up going on that road trip?" },
-    { id: 2, title: "Message to Me in 5 Years", unlockDate: "2031-07-14", category: "Future", theme: "parchment", content: "Hello from 2026! You are officially 5 years older now." },
-    { id: 3, title: "Advice for College Entry", unlockDate: "2027-09-01", category: "School", theme: "classic", content: "College is starting! Take a deep breath." },
-    { id: 4, title: "Note to self (Unlocked!)", unlockDate: "2026-01-01", category: "Instant", theme: "neon", content: "This is a letter from the past that you can read right now." }
+    { id: 1, title: "My Goals for this Summer", unlockDate: "2026-08-31", category: "Personal", theme: "moss", content: "Hey future self! Did you end up going on that road trip?", favorite: true, archived: false },
+    { id: 2, title: "Message to Me in 5 Years", unlockDate: "2031-07-14", category: "Future", theme: "parchment", content: "Hello from 2026! You are officially 5 years older now.", favorite: true, archived: false },
+    { id: 3, title: "Advice for College Entry", unlockDate: "2027-09-01", category: "School", theme: "classic", content: "College is starting! Take a deep breath.", favorite: false, archived: false },
+    { id: 4, title: "Note to self (Unlocked!)", unlockDate: "2026-01-01", category: "Instant", theme: "neon", content: "This is a letter from the past that you can read right now.", favorite: true, archived: true }
   ]);
 
   const [countdown, setCountdown] = useState({ title: "No upcoming letters", years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
-  const tiles = [{ label: 'Favorites', icon: '⭐', count: 3 }, { label: 'Categories', icon: '📁', count: 0 }, { label: 'Badges', icon: '🏆', count: 1 }, { label: 'Archive', icon: '📦', count: 5 }];
 
-  // Safe manual parse helper for mobile timezone calculation bugs
+  // Dynamic Tile Counts based on letter states
+  const favoriteCount = sealedLetters.filter(l => l.favorite && !l.archived).length;
+  const archivedCount = sealedLetters.filter(l => l.archived).length;
+  const uniqueCategories = Array.from(new Set(sealedLetters.map(l => l.category))).length;
+
+  const tiles = [
+    { id: 'Favorites', label: 'Favorites', icon: '⭐', count: favoriteCount },
+    { id: 'Categories', label: 'Categories', icon: '📁', count: uniqueCategories },
+    { id: 'Archived', label: 'Archive', icon: '📦', count: archivedCount }
+  ];
+
+  // Safe manual parse helper
   const parseDateSafely = (dateStr) => {
     const parts = dateStr.split('-');
     return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 0, 0, 0, 0);
@@ -69,9 +83,9 @@ export default function App() {
   // --- LIVE TIMER ENGINE EFFECT ---
   useEffect(() => {
     const updateTimer = () => {
-      const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate));
+      const lockedLetters = sealedLetters.filter(l => !isLetterUnlocked(l.unlockDate) && !l.archived);
       if (lockedLetters.length === 0) {
-        setCountdown(prev => ({ ...prev, title: "All letters unlocked! 🎉" }));
+        setCountdown({ title: "All letters unlocked! 🎉", years: "0", months: "0", days: "0", hours: "0", minutes: "0", seconds: "0" });
         return;
       }
 
@@ -116,6 +130,55 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [sealedLetters]);
 
+  // Filtering Logic
+  const getFilteredLetters = () => {
+    return sealedLetters.filter(letter => {
+      // 1. Check Search Query
+      const matchesSearch = 
+        letter.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        letter.content.toLowerCase().includes(searchQuery.toLowerCase());
+
+      // 2. Check Active Tile Filters
+      if (activeFilter === 'Favorites') {
+        return matchesSearch && letter.favorite && !letter.archived;
+      }
+      if (activeFilter === 'Archived') {
+        return matchesSearch && letter.archived;
+      }
+      if (activeFilter === 'Categories') {
+        // Just show all non-archived sorted by category if they clicked categories
+        return matchesSearch && !letter.archived;
+      }
+      
+      // Default: Hide archived from the main dashboard "All" view
+      return matchesSearch && !letter.archived;
+    });
+  };
+
+  const handleTilePress = (tileId) => {
+    if (activeFilter === tileId) {
+      setActiveFilter('All'); // Toggle off back to main list
+    } else {
+      setActiveFilter(tileId);
+    }
+  };
+
+  const toggleFavorite = (id) => {
+    setSealedLetters(sealedLetters.map(l => 
+      l.id === id ? { ...l, favorite: !l.favorite } : l
+    ));
+    if (selectedLetter && selectedLetter.id === id) {
+      setSelectedLetter(prev => ({ ...prev, favorite: !prev.favorite }));
+    }
+  };
+
+  const toggleArchive = (id) => {
+    setSealedLetters(sealedLetters.map(l => 
+      l.id === id ? { ...l, archived: !l.archived } : l
+    ));
+    setCurrentScreen('home');
+  };
+
   const formatDisplayDate = (dateObj) => {
     const offset = dateObj.getTimezoneOffset();
     const correctedDate = new Date(dateObj.getTime() - (offset * 60 * 1000));
@@ -150,6 +213,8 @@ export default function App() {
       category: categoryInput,
       theme: themeInput,
       content: contentInput || "No content written.",
+      favorite: false,
+      archived: false
     };
 
     setSealedLetters([newLetter, ...sealedLetters]); 
@@ -187,6 +252,8 @@ export default function App() {
 
   // --- SCREEN 1: HOME DASHBOARD ---
   if (currentScreen === 'home') {
+    const filteredLetters = getFilteredLetters();
+
     return (
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContainer}>
@@ -196,6 +263,7 @@ export default function App() {
             <Text style={styles.taglineText}>✨ Write today. Discover tomorrow.</Text>
           </View>
 
+          {/* TIMER HERO CARD */}
           <View style={styles.heroContainer}>
             <TouchableOpacity style={styles.heroCard} activeOpacity={0.9}>
               <View style={styles.heroHeader}>
@@ -223,16 +291,46 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
+          {/* INTERACTIVE DASHBOARD TILES */}
           <View style={styles.gridContainer}>
-            {tiles.map((tile, index) => (
-              <TouchableOpacity key={index} style={styles.tileButton} activeOpacity={0.8}>
-                <View style={styles.tileLeft}>
-                  <View style={styles.iconCircle}><Text style={styles.tileIcon}>{tile.icon}</Text></View>
-                  <Text style={styles.tileLabel}>{tile.label}</Text>
-                </View>
-                {tile.count > 0 && <Text style={styles.tileCount}>{tile.count}</Text>}
-              </TouchableOpacity>
-            ))}
+            {tiles.map((tile) => {
+              const isSelected = activeFilter === tile.id;
+              return (
+                <TouchableOpacity 
+                  key={tile.id} 
+                  style={[styles.tileButton, isSelected && styles.tileButtonActive]} 
+                  activeOpacity={0.8}
+                  onPress={() => handleTilePress(tile.id)}
+                >
+                  <View style={styles.tileLeft}>
+                    <View style={[styles.iconCircle, isSelected && styles.iconCircleActive]}>
+                      <Text style={styles.tileIcon}>{tile.icon}</Text>
+                    </View>
+                    <Text style={[styles.tileLabel, isSelected && styles.tileLabelActive]}>{tile.label}</Text>
+                  </View>
+                  <Text style={[styles.tileCount, isSelected && styles.tileCountActive]}>{tile.count}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* SEARCH BAR & FILTER INDICATORS */}
+          <View style={styles.searchContainer}>
+            <TextInput 
+              style={styles.searchBar} 
+              placeholder="🔍 Search letters by title or content..." 
+              placeholderTextColor="#888"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            {activeFilter !== 'All' && (
+              <View style={styles.activeFilterRow}>
+                <Text style={styles.filterLabel}>Filtering by: <Text style={styles.filterHighlight}>{activeFilter}</Text></Text>
+                <TouchableOpacity onPress={() => setActiveFilter('All')}>
+                  <Text style={styles.clearFilterText}>Clear Filter ✕</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           <View style={styles.buttonContainer}>
@@ -241,31 +339,43 @@ export default function App() {
             </TouchableOpacity>
           </View>
 
+          {/* LETTERS LIST */}
           <View style={styles.sealedSection}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Sealed letters</Text>
-              <TouchableOpacity><Text style={styles.seeAllText}>See all ➔</Text></TouchableOpacity>
+              <Text style={styles.sectionTitle}>
+                {activeFilter === 'All' ? 'Sealed letters' : `${activeFilter} letters`} ({filteredLetters.length})
+              </Text>
             </View>
+            
             <View style={styles.lettersList}>
-              {sealedLetters.map((letter) => {
-                const unlocked = isLetterUnlocked(letter.unlockDate);
-                return (
-                  <TouchableOpacity key={letter.id} style={styles.letterCard} activeOpacity={0.7} onPress={() => handleSelectLetter(letter)}>
-                    <View style={styles.letterLeft}>
-                      <Text style={styles.lockIcon}>{unlocked ? '🔓' : '🔒'}</Text>
-                      <View>
-                        <Text style={styles.letterTitle}>{letter.title}</Text>
-                        <Text style={styles.letterSubtitle}>
-                          {unlocked ? "Unlocked! Ready to read" : `Unlocks on ${formatDisplayString(letter.unlockDate)}`}
-                        </Text>
+              {filteredLetters.length > 0 ? (
+                filteredLetters.map((letter) => {
+                  const unlocked = isLetterUnlocked(letter.unlockDate);
+                  return (
+                    <TouchableOpacity key={letter.id} style={styles.letterCard} activeOpacity={0.7} onPress={() => handleSelectLetter(letter)}>
+                      <View style={styles.letterLeft}>
+                        <Text style={styles.lockIcon}>{unlocked ? '🔓' : '🔒'}</Text>
+                        <View style={{ flexShrink: 1 }}>
+                          <View style={styles.titleRow}>
+                            <Text style={styles.letterTitle} numberOfLines={1}>{letter.title}</Text>
+                            {letter.favorite && <Text style={styles.starMini}>⭐</Text>}
+                          </View>
+                          <Text style={styles.letterSubtitle}>
+                            {unlocked ? "Unlocked! Ready to read" : `Unlocks on ${formatDisplayString(letter.unlockDate)}`}
+                          </Text>
+                        </View>
                       </View>
-                    </View>
-                    <View style={unlocked ? styles.unlockedBadge : styles.categoryBadge}>
-                      <Text style={unlocked ? styles.unlockedBadgeText : styles.categoryText}>{letter.category}</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+                      <View style={unlocked ? styles.unlockedBadge : styles.categoryBadge}>
+                        <Text style={unlocked ? styles.unlockedBadgeText : styles.categoryText}>{letter.category}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No letters found matching your criteria. 📥</Text>
+                </View>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -373,8 +483,22 @@ export default function App() {
               <View style={[styles.unlockedCategoryBadge, { backgroundColor: activeTheme.accent + '25' }]}><Text style={[styles.unlockedCategoryText, { color: activeTheme.accent }]}>{selectedLetter.category}</Text></View>
               <Text style={styles.unlockedDateText}>Unsealed on {formatDisplayString(selectedLetter.unlockDate)}</Text>
             </View>
-            <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
-            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}><Text style={[styles.letterPaperText, { color: activeTheme.text, fontStyle: activeTheme.fontStyle }]}>{selectedLetter.content}</Text></View>
+            
+            <View style={styles.headerActionRow}>
+              <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
+              <View style={styles.iconButtons}>
+                <TouchableOpacity onPress={() => toggleFavorite(selectedLetter.id)} style={styles.actionIconButton}>
+                  <Text style={styles.actionIcon}>{selectedLetter.favorite ? '⭐' : '☆'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => toggleArchive(selectedLetter.id)} style={styles.actionIconButton}>
+                  <Text style={styles.actionIcon}>{selectedLetter.archived ? '📤' : '📦'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            
+            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}>
+              <Text style={[styles.letterPaperText, { color: activeTheme.text, fontStyle: activeTheme.fontStyle }]}>{selectedLetter.content}</Text>
+            </View>
           </ScrollView>
         ) : (
           <View style={styles.lockedContainer}>
@@ -385,8 +509,17 @@ export default function App() {
               <Text style={styles.lockDetailsLabel}>DESTINATION DATE</Text>
               <Text style={styles.lockDetailsValue}>{formatDisplayString(selectedLetter.unlockDate)}</Text>
               <View style={styles.lockedSeparator} />
-              <Text style={styles.lockDetailsLabel}>CATEGORY</Text>
-              <Text style={styles.lockDetailsValue}>{selectedLetter.category}</Text>
+              
+              <View style={styles.inlineActionRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lockDetailsLabel}>CATEGORY</Text>
+                  <Text style={styles.lockDetailsValue}>{selectedLetter.category}</Text>
+                </View>
+                <TouchableOpacity onPress={() => toggleFavorite(selectedLetter.id)} style={styles.favoriteButtonMini}>
+                  <Text style={styles.miniFavStar}>{selectedLetter.favorite ? '⭐ Favorited' : '☆ Favorite'}</Text>
+                </TouchableOpacity>
+              </View>
+              
               <View style={styles.lockedSeparator} />
               <Text style={styles.lockDetailsLabel}>STATIONERY THEME</Text>
               <Text style={styles.lockDetailsValue}>🎨 {activeTheme.name}</Text>
@@ -408,6 +541,8 @@ const styles = StyleSheet.create({
   welcomeText: { fontSize: 14, color: '#888888' },
   titleText: { fontSize: 32, fontWeight: '700', color: '#ffffff', marginTop: 2 },
   taglineText: { fontSize: 14, fontStyle: 'italic', color: '#bb86fc', marginTop: 6 },
+  
+  // Hero
   heroContainer: { paddingHorizontal: 20, marginTop: 16 },
   heroCard: { backgroundColor: '#1e1e1e', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: 'rgba(187, 134, 252, 0.2)' },
   heroHeader: { flexDirection: 'row', alignItems: 'center' },
@@ -419,30 +554,53 @@ const styles = StyleSheet.create({
   timeBox: { flex: 1, backgroundColor: '#2d2d2d', borderRadius: 12, paddingVertical: 8, marginHorizontal: 2, alignItems: 'center' },
   timeVal: { color: '#ffffff', fontSize: 18, fontWeight: '700' },
   timeLabel: { color: '#888888', fontSize: 9, textTransform: 'uppercase', marginTop: 2 },
+  
+  // Interactive Tiles
   gridContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 16 },
-  tileButton: { width: '48%', backgroundColor: '#1e1e1e', borderRadius: 16, padding: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, borderWidth: 1, borderColor: '#2d2d2d' },
-  tileLeft: { flexDirection: 'row', alignItems: 'center' },
-  iconCircle: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(187, 134, 252, 0.1)', alignItems: 'center', justifyContent: 'center', marginRight: 8 },
-  tileIcon: { fontSize: 14 },
-  tileLabel: { color: '#ffffff', fontSize: 14, fontWeight: '500' },
-  tileCount: { color: '#888888', fontSize: 14, fontWeight: '600' },
+  tileButton: { width: '31%', backgroundColor: '#1e1e1e', borderRadius: 16, padding: 10, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, borderWidth: 1, borderColor: '#2d2d2d' },
+  tileButtonActive: { borderColor: '#bb86fc', backgroundColor: 'rgba(187, 134, 252, 0.1)' },
+  tileLeft: { flexDirection: 'row', alignItems: 'center', flexShrink: 1 },
+  iconCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255, 255, 255, 0.05)', alignItems: 'center', justifyContent: 'center', marginRight: 6 },
+  iconCircleActive: { backgroundColor: '#bb86fc' },
+  tileIcon: { fontSize: 12 },
+  tileLabel: { color: '#ffffff', fontSize: 11, fontWeight: '500' },
+  tileLabelActive: { color: '#bb86fc', fontWeight: '700' },
+  tileCount: { color: '#888888', fontSize: 12, fontWeight: '600' },
+  tileCountActive: { color: '#bb86fc' },
+
+  // Search Bar
+  searchContainer: { paddingHorizontal: 20, marginVertical: 8 },
+  searchBar: { backgroundColor: '#1e1e1e', color: '#ffffff', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: '#2d2d2d', fontSize: 14 },
+  activeFilterRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, paddingHorizontal: 4 },
+  filterLabel: { color: '#888888', fontSize: 12 },
+  filterHighlight: { color: '#bb86fc', fontWeight: '700' },
+  clearFilterText: { color: '#ff5c5c', fontSize: 12, fontWeight: '600' },
+  
+  // Write Button
   buttonContainer: { paddingHorizontal: 20, marginTop: 8 },
   writeButton: { backgroundColor: '#bb86fc', paddingVertical: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   writeButtonText: { color: '#121212', fontSize: 16, fontWeight: '600' },
-  sealedSection: { paddingHorizontal: 20, marginTop: 24 },
+  
+  // Sealed Section List
+  sealedSection: { paddingHorizontal: 20, marginTop: 18 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { color: '#888888', fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  seeAllText: { color: '#bb86fc', fontSize: 12, fontWeight: '500' },
   lettersList: { gap: 12 },
   letterCard: { backgroundColor: '#1e1e1e', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderWidth: 1, borderColor: '#2d2d2d' },
-  letterLeft: { flexDirection: 'row', alignItems: 'center' },
+  letterLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  titleRow: { flexDirection: 'row', alignItems: 'center' },
+  starMini: { fontSize: 12, marginLeft: 6 },
   lockIcon: { fontSize: 18, marginRight: 12 },
-  letterTitle: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
+  letterTitle: { color: '#ffffff', fontSize: 16, fontWeight: '600', maxWidth: '85%' },
   letterSubtitle: { color: '#888888', fontSize: 12, marginTop: 2 },
-  categoryBadge: { backgroundColor: 'rgba(255, 255, 255, 0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  categoryBadge: { backgroundColor: 'rgba(255, 255, 255, 0.05)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
   categoryText: { color: '#888888', fontSize: 11 },
-  unlockedBadge: { backgroundColor: 'rgba(0, 230, 118, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  unlockedBadge: { backgroundColor: 'rgba(0, 230, 118, 0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginLeft: 8 },
   unlockedBadgeText: { color: '#00e676', fontSize: 11, fontWeight: '600' },
+  emptyContainer: { alignItems: 'center', paddingVertical: 32 },
+  emptyText: { color: '#555555', fontSize: 14, textAlign: 'center' },
+
+  // Forms & Modals
   createHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 64 : 48, paddingBottom: 20, borderBottomWidth: 1, borderColor: '#2d2d2d' },
   cancelText: { color: '#ff5c5c', fontSize: 16, fontWeight: '500', width: 80 },
   backButtonText: { color: '#bb86fc', fontSize: 16, fontWeight: '500', width: 80 },
@@ -474,14 +632,22 @@ const styles = StyleSheet.create({
   floatingBottomRow: { position: 'absolute', bottom: 24, left: 20, right: 20, flexDirection: 'row', justifyContent: 'flex-end' },
   floatingSealButton: { backgroundColor: '#bb86fc', paddingVertical: 14, paddingHorizontal: 24, borderRadius: 24, shadowColor: '#bb86fc', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6 },
   floatingSealButtonText: { color: '#121212', fontSize: 15, fontWeight: '700' },
+  
+  // Details screen
   detailContainer: { padding: 20 },
   unlockedHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   unlockedCategoryBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   unlockedCategoryText: { fontSize: 13, fontWeight: '600' },
   unlockedDateText: { color: '#888888', fontSize: 13 },
-  detailLetterTitle: { color: '#ffffff', fontSize: 26, fontWeight: '700', marginBottom: 20 },
+  headerActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, gap: 12 },
+  detailLetterTitle: { color: '#ffffff', fontSize: 26, fontWeight: '700', flex: 1 },
+  iconButtons: { flexDirection: 'row', gap: 10 },
+  actionIconButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#1e1e1e', borderWidth: 1, borderColor: '#2d2d2d', alignItems: 'center', justifyContent: 'center' },
+  actionIcon: { fontSize: 20, color: '#ffffff' },
   letterPaper: { borderWidth: 1, borderRadius: 16, padding: 20, minHeight: 250 },
   letterPaperText: { fontSize: 16, lineHeight: 26 },
+  
+  // Locked State
   lockedContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30, paddingBottom: 60 },
   padlockCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(187, 134, 252, 0.1)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1.5, borderColor: '#bb86fc' },
   padlockEmoji: { fontSize: 48 },
@@ -492,4 +658,7 @@ const styles = StyleSheet.create({
   lockDetailsValue: { color: '#ffffff', fontSize: 18, fontWeight: '600' },
   lockedSeparator: { height: 1, backgroundColor: '#2d2d2d', marginVertical: 14 },
   lockedTagline: { color: '#bb86fc', fontSize: 13, fontWeight: '500' },
+  inlineActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  favoriteButtonMini: { backgroundColor: 'rgba(187, 134, 252, 0.15)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(187, 134, 252, 0.3)' },
+  miniFavStar: { color: '#bb86fc', fontSize: 12, fontWeight: '600' }
 });
