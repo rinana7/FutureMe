@@ -1,88 +1,93 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export default function BottomNavBar({ activeTab, setActiveTab }) {
+export default function BottomNavBar({
+  activeTab,
+  setActiveTab,
+  isDark,
+  accentColor,
+}) {
+  const insets = useSafeAreaInsets();
+
+  // Dynamic colors based on light / dark mode
+  const navBgColor = isDark ? '#1E1E1E' : '#FFFFFF';
+  const navBorderColor = isDark ? '#2A2A2A' : '#EAE5DF';
+  const inactiveTextColor = isDark ? '#888888' : '#8E8E93';
+
+  const tabs = [
+    { id: 'home', label: 'Home', icon: '🏠' },
+    { id: 'write', label: 'Write', icon: '✏️' },
+    { id: 'archive', label: 'Archive', icon: '📦' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
+  ];
+
   return (
-    <View style={styles.navBar}>
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => setActiveTab('home')}
-      >
-        <Text style={[styles.icon, activeTab === 'home' && styles.activeIcon]}>
-          🏠
-        </Text>
-        <Text style={[styles.label, activeTab === 'home' && styles.activeLabel]}>
-          Home
-        </Text>
-      </TouchableOpacity>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: navBgColor,
+          borderColor: navBorderColor,
+          paddingBottom: insets.bottom + 15, // Higher elevation
+        },
+      ]}
+    >
+      {tabs.map((tab) => {
+        const isActive = activeTab === tab.id;
+        const activeColor = accentColor || '#D9822B';
 
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => setActiveTab('write')}
-      >
-        <Text style={[styles.icon, activeTab === 'write' && styles.activeIcon]}>
-          ✏️
-        </Text>
-        <Text style={[styles.label, activeTab === 'write' && styles.activeLabel]}>
-          Write
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => setActiveTab('archive')}
-      >
-        <Text style={[styles.icon, activeTab === 'archive' && styles.activeIcon]}>
-          📁
-        </Text>
-        <Text style={[styles.label, activeTab === 'archive' && styles.activeLabel]}>
-          Archive
-        </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.navItem}
-        onPress={() => setActiveTab('settings')}
-      >
-        <Text style={[styles.icon, activeTab === 'settings' && styles.activeIcon]}>
-          ⚙️
-        </Text>
-        <Text style={[styles.label, activeTab === 'settings' && styles.activeLabel]}>
-          Settings
-        </Text>
-      </TouchableOpacity>
+        return (
+          <TouchableOpacity
+            key={tab.id}
+            style={styles.tabButton}
+            onPress={() => setActiveTab(tab.id)}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                styles.icon,
+                { opacity: isActive ? 1 : 0.6 },
+              ]}
+            >
+              {tab.icon}
+            </Text>
+            <Text
+              style={[
+                styles.label,
+                {
+                  color: isActive ? activeColor : inactiveTextColor,
+                  fontWeight: isActive ? '700' : '500',
+                },
+              ]}
+            >
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  navBar: {
+  container: {
     flexDirection: 'row',
-    backgroundColor: '#1e1e1e',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
     justifyContent: 'space-around',
-    marginBottom: 20,
-    paddingHorizontal: 10,
-  },
-  navItem: {
     alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  tabButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   icon: {
     fontSize: 20,
-    opacity: 0.5,
-  },
-  activeIcon: {
-    opacity: 1,
+    marginBottom: 4,
   },
   label: {
     fontSize: 11,
-    color: '#888888',
-    marginTop: 2,
-  },
-  activeLabel: {
-    color: '#ff9f43',
-    fontWeight: 'bold',
   },
 });
