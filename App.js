@@ -110,7 +110,7 @@ export default function App() {
       case 'archive':
         return <ArchiveScreen letters={letters.filter((l) => l.isArchived)} />;
       case 'settings':
-        return <SettingsScreen onResetData={handleResetData} />;
+        return <SettingsScreen letters={letters} setLetters={setLetters} />;
       default:
         return (
           <HomeScreen
