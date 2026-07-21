@@ -1,439 +1,396 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  TextInput,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
-  Modal,
+  Alert,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
-export default function SettingsScreen({
-  letters = [],
-  setLetters,
-  themeMode,
-  setThemeMode,
-  accentColor,
-  setAccentColor,
-  initialModal = null,
-  onClearInitialModal,
-  onBack,
-}) {
-  const [activeModal, setActiveModal] = useState(initialModal);
-
-  useEffect(() => {
-    if (initialModal) {
-      setActiveModal(initialModal);
-    }
-  }, [initialModal]);
-
-  const handleCloseModal = () => {
-    setActiveModal(null);
-    if (onClearInitialModal) onClearInitialModal();
-  };
-
-  const accentColors = [
-    '#007AFF', '#2AC7E2', '#8E44AD', '#EC407A',
-    '#E74C3C', '#F39C12', '#F1C40F', '#27AE60',
-    '#00A896', '#D9822B', '#2C3E50',
-  ];
+export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' }) {
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [category, setCategory] = useState('School');
+  const [selectedDuration, setSelectedDuration] = useState('Tomorrow'); // 'Tomorrow' | 'In 2 days' | 'In 3 days' | '1 week' | 'custom'
+  const [customDate, setCustomDate] = useState(new Date('2026-07-21'));
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const categories = [
-    { name: 'Goals', count: 3 },
-    { name: 'Memories', count: 1 },
-    { name: 'School', count: 2 },
-    { name: 'Personal', count: 3 },
-    { name: 'Family', count: 1 },
-    { name: 'Friends', count: 1 },
-    { name: 'Hobbies', count: 1 },
-    { name: 'Travel', count: 1 },
+    'Goals',
+    'Memories',
+    'School',
+    'Personal',
+    'Family',
+    'Friends',
+    'Hobbies',
+    'Travel',
+    'Other',
   ];
 
-  const achievements = [
-    { title: 'First Letter', desc: 'Write your first future letter.', unlocked: true, icon: '✏️' },
-    { title: 'Long-Term Planner', desc: 'Schedule a letter more than one year in advance.', unlocked: true, icon: '⏳' },
-    { title: 'Designer', desc: "Customize your app's appearance.", unlocked: true, icon: '🎨' },
-    { title: 'Future Messenger', desc: 'Schedule 10 letters.', unlocked: false, icon: '🔒' },
-    { title: 'Reflection Master', desc: 'Open 25 letters.', unlocked: false, icon: '🔒' },
-    { title: 'Collector', desc: 'Favorite 25 letters.', unlocked: false, icon: '🔒' },
-    { title: 'Organizer', desc: 'Create 10 categories.', unlocked: false, icon: '🔒' },
+  const durationOptions = [
+    { id: 'Tomorrow', label: 'Tomorrow', days: 1 },
+    { id: 'In 2 days', label: 'In 2 days', days: 2 },
+    { id: 'In 3 days', label: 'In 3 days', days: 3 },
+    { id: '1 week', label: '1 week', days: 7 },
   ];
 
-  const isDark = themeMode === 'Dark';
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setCustomDate(selectedDate);
+      setSelectedDuration('custom');
+    }
+  };
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      Alert.alert('Missing Title', 'Please give your letter a title.');
+      return;
+    }
+
+    if (!content.trim()) {
+      Alert.alert('Missing Content', 'Please write some content before sealing.');
+      return;
+    }
+
+    let targetDate = new Date();
+
+    if (selectedDuration === 'custom' && customDate) {
+      targetDate = customDate;
+    } else {
+      const option = durationOptions.find((opt) => opt.id === selectedDuration);
+      const daysToAdd = option ? option.days : 1;
+      targetDate.setDate(targetDate.getDate() + daysToAdd);
+    }
+
+    const newLetter = {
+      id: Date.now().toString(),
+      title: title.trim(),
+      content: content.trim(),
+      type: 'future',
+      category: category,
+      isFavorite: false,
+      isArchived: false,
+      createdAt: new Date().toISOString(),
+      unlockDate: targetDate.toISOString(),
+    };
+
+    onSave(newLetter);
+  };
+
+  // Light/Dark Theme colors matching design
   const bgColor = isDark ? '#121212' : '#FAF8F5';
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
-
-  const renderModalContent = () => {
-    switch (activeModal) {
-      case 'themes':
-        return (
-          <View style={styles.modalInner}>
-            <Text style={[styles.modalTitle, { color: textColor }]}>Themes</Text>
-            <Text style={[styles.modalSub, { color: subTextColor }]}>
-              Make Future Letter feel like yours
-            </Text>
-
-            <Text style={styles.sectionHeader}>APPEARANCE</Text>
-            <View style={styles.appearanceRow}>
-              {['Light', 'Dark'].map((mode) => (
-                <TouchableOpacity
-                  key={mode}
-                  style={[
-                    styles.appearanceCard,
-                    { backgroundColor: cardBg, borderColor },
-                    themeMode === mode && { borderColor: accentColor, borderWidth: 1.5 },
-                  ]}
-                  onPress={() => setThemeMode(mode)}
-                >
-                  <Text style={styles.appearanceIcon}>{mode === 'Light' ? '☀️' : '🌙'}</Text>
-                  <Text style={[styles.appearanceText, { color: textColor }]}>{mode}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <Text style={styles.sectionHeader}>ACCENT COLOR</Text>
-            <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor }]}>
-              <View style={styles.colorGrid}>
-                {accentColors.map((color) => (
-                  <TouchableOpacity
-                    key={color}
-                    style={[
-                      styles.colorCircle,
-                      { backgroundColor: color },
-                      accentColor === color && { borderWidth: 3, borderColor: color },
-                    ]}
-                    onPress={() => setAccentColor(color)}
-                  />
-                ))}
-              </View>
-            </View>
-          </View>
-        );
-
-      case 'categories':
-        return (
-          <View style={styles.modalInner}>
-            <Text style={[styles.modalTitle, { color: textColor }]}>Categories</Text>
-            <Text style={[styles.modalSub, { color: subTextColor }]}>Organize your letters</Text>
-            {categories.map((cat, idx) => (
-              <View key={idx} style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}>
-                <Text style={{ fontSize: 18, marginRight: 12 }}>🗂️</Text>
-                <View>
-                  <Text style={[styles.itemTitle, { color: textColor }]}>{cat.name}</Text>
-                  <Text style={[styles.itemSub, { color: subTextColor }]}>
-                    {cat.count} {cat.count === 1 ? 'letter' : 'letters'} · default
-                  </Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        );
-
-      case 'favorites':
-        const favoriteLetters = letters.filter((l) => l.isFavorite);
-        return (
-          <View style={styles.modalInner}>
-            <Text style={[styles.modalTitle, { color: textColor }]}>Favorites</Text>
-            <Text style={[styles.modalSub, { color: subTextColor }]}>Your starred letters</Text>
-            {favoriteLetters.length === 0 ? (
-              <View style={[styles.emptyBox, { borderColor }]}>
-                <Text style={{ color: subTextColor }}>No favorite letters yet.</Text>
-              </View>
-            ) : (
-              favoriteLetters.map((l) => (
-                <View key={l.id} style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}>
-                  <Text style={{ fontSize: 18, marginRight: 12 }}>⭐</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.itemTitle, { color: textColor }]}>{l.title}</Text>
-                    <Text style={[styles.itemSub, { color: subTextColor }]}>{l.content}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </View>
-        );
-
-      case 'achievements':
-        return (
-          <View style={styles.modalInner}>
-            <Text style={[styles.modalTitle, { color: textColor }]}>Achievements</Text>
-            <Text style={[styles.modalSub, { color: subTextColor }]}>Milestones on your journey</Text>
-            <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor, marginBottom: 16 }]}>
-              <Text style={{ color: subTextColor, fontSize: 12 }}>Badges earned</Text>
-              <Text style={{ fontSize: 24, fontWeight: 'bold', color: accentColor }}>3 / 12 (25%)</Text>
-            </View>
-            <View style={styles.grid2Col}>
-              {achievements.map((item, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.gridCard,
-                    { backgroundColor: cardBg, borderColor },
-                    item.unlocked && { borderColor: accentColor },
-                  ]}
-                >
-                  <Text style={{ fontSize: 24, marginBottom: 8 }}>{item.icon}</Text>
-                  <Text style={[styles.itemTitle, { color: textColor }]}>{item.title}</Text>
-                  <Text style={[styles.itemSub, { color: subTextColor, marginTop: 4 }]}>
-                    {item.desc}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        );
-
-      case 'deleted':
-        return (
-          <View style={styles.modalInner}>
-            <Text style={[styles.modalTitle, { color: textColor }]}>Recently Deleted</Text>
-            <Text style={[styles.modalSub, { color: subTextColor }]}>
-              Kept for 30 days, then erased
-            </Text>
-            <View style={[styles.emptyBox, { borderColor }]}>
-              <Text style={{ color: subTextColor }}>Nothing has been deleted recently.</Text>
-            </View>
-          </View>
-        );
-
-      default:
-        return null;
-    }
-  };
+  const placeholderColor = isDark ? '#666666' : '#B0B0B0';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      <View style={styles.topBar}>
-        <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.backButtonTouch}>
-          <Text style={[styles.backArrow, { color: textColor }]}>‹ Back</Text>
+    <View style={[styles.container, { backgroundColor: bgColor }]}>
+      {/* Top Header Row */}
+      <View style={styles.topHeader}>
+        <TouchableOpacity style={styles.closeBtn} activeOpacity={0.6}>
+          <Text style={[styles.closeBtnText, { color: textColor }]}>✕</Text>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: textColor }]}>New letter</Text>
+        <TouchableOpacity
+          style={[styles.sealButton, { backgroundColor: '#EAD1A8' }]}
+          onPress={handleSave}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.sealButtonText}>Seal</Text>
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <Text style={[styles.headerTitle, { color: textColor }]}>Settings</Text>
-        <Text style={styles.headerSubtitle}>Make it yours</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Title Input */}
+        <TextInput
+          style={[styles.titleInput, { color: textColor }]}
+          placeholder="Give your letter a title"
+          placeholderTextColor={placeholderColor}
+          value={title}
+          onChangeText={setTitle}
+        />
 
-        <Text style={styles.sectionHeader}>APPEARANCE</Text>
-        <View style={styles.appearanceRow}>
-          {['Light', 'Dark'].map((mode) => (
-            <TouchableOpacity
-              key={mode}
-              style={[
-                styles.appearanceCard,
-                { backgroundColor: cardBg, borderColor },
-                themeMode === mode && { borderColor: accentColor, borderWidth: 1.5 },
-              ]}
-              onPress={() => setThemeMode(mode)}
-            >
-              <Text style={styles.appearanceIcon}>{mode === 'Light' ? '☀️' : '🌙'}</Text>
-              <Text style={[styles.appearanceText, { color: textColor }]}>{mode}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
-        <Text style={styles.sectionHeader}>ACCENT COLOR</Text>
-        <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor }]}>
-          <View style={styles.colorGrid}>
-            {accentColors.map((color) => (
+        {/* Content Body Input */}
+        <TextInput
+          style={[styles.bodyInput, { color: textColor }]}
+          placeholder="Dear future me, Write what you want to remember, hope, or promise yourself..."
+          placeholderTextColor={placeholderColor}
+          multiline
+          textAlignVertical="top"
+          value={content}
+          onChangeText={setContent}
+        />
+
+        {/* Attach Photo Button */}
+        <TouchableOpacity
+          style={[styles.photoButton, { borderColor }]}
+          activeOpacity={0.7}
+          onPress={() => Alert.alert('Attach Photo', 'Photo attachment option selected.')}
+        >
+          <Text style={styles.photoIcon}>📷</Text>
+          <Text style={[styles.photoText, { color: subTextColor }]}>Attach a photo</Text>
+        </TouchableOpacity>
+
+        {/* When Should It Arrive Section */}
+        <Text style={[styles.sectionTitle, { color: textColor }]}>
+          📅 When should it arrive?
+        </Text>
+
+        <View style={styles.grid2Col}>
+          {durationOptions.map((opt) => {
+            const isSelected = selectedDuration === opt.id;
+            return (
               <TouchableOpacity
-                key={color}
+                key={opt.id}
                 style={[
-                  styles.colorCircle,
-                  { backgroundColor: color },
-                  accentColor === color && { borderWidth: 3, borderColor: color },
+                  styles.durationCard,
+                  { backgroundColor: isSelected ? accentColor : cardBg, borderColor },
                 ]}
-                onPress={() => setAccentColor(color)}
-              />
-            ))}
+                onPress={() => setSelectedDuration(opt.id)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.durationText,
+                    { color: isSelected ? '#FFFFFF' : textColor },
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Custom Date Picker Card */}
+        <TouchableOpacity
+          style={[
+            styles.customDateCard,
+            {
+              backgroundColor: cardBg,
+              borderColor: selectedDuration === 'custom' ? accentColor : borderColor,
+            },
+          ]}
+          onPress={() => setShowDatePicker(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.customDateLeft}>
+            <Text style={{ fontSize: 16, marginRight: 8 }}>📅</Text>
+            <Text style={[styles.customDateLabel, { color: subTextColor }]}>
+              Pick a custom date
+            </Text>
           </View>
+          <Text style={[styles.customDateValue, { color: textColor }]}>
+            {customDate.toLocaleDateString('en-US', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.helperText, { color: subTextColor }]}>
+          No limit — schedule years or even decades ahead.
+        </Text>
+
+        {/* Categories Section */}
+        <Text style={[styles.sectionTitle, { color: textColor, marginTop: 24 }]}>
+          Categories
+        </Text>
+
+        <View style={styles.categoryWrap}>
+          {categories.map((cat) => {
+            const isSelected = category === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.categoryPill,
+                  {
+                    backgroundColor: cardBg,
+                    borderColor: isSelected ? accentColor : borderColor,
+                    borderWidth: isSelected ? 1.5 : 1,
+                  },
+                ]}
+                onPress={() => setCategory(cat)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.categoryText,
+                    { color: textColor, fontWeight: isSelected ? '700' : '500' },
+                  ]}
+                >
+                  {cat}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        <Text style={styles.sectionHeader}>LIBRARY</Text>
-        <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor, paddingVertical: 4 }]}>
-          <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('themes')}>
-            <Text style={[styles.libraryLabel, { color: textColor }]}>🎨 Custom Themes</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('categories')}>
-            <Text style={[styles.libraryLabel, { color: textColor }]}>🗂️ Categories</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('favorites')}>
-            <Text style={[styles.libraryLabel, { color: textColor }]}>⭐ Favorites</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('achievements')}>
-            <Text style={[styles.libraryLabel, { color: textColor }]}>🏆 Achievements</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('deleted')}>
-            <Text style={[styles.libraryLabel, { color: textColor }]}>🗑️ Recently Deleted</Text>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.footerQuote}>Write today. Discover tomorrow.</Text>
+        {/* System Calendar Picker */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={customDate}
+            mode="date"
+            display="default"
+            minimumDate={new Date()}
+            onChange={handleDateChange}
+          />
+        )}
       </ScrollView>
-
-      <Modal visible={activeModal !== null} animationType="slide" onRequestClose={handleCloseModal}>
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
-          <View style={styles.modalTopBar}>
-            <TouchableOpacity
-              onPress={handleCloseModal}
-              activeOpacity={0.7}
-              style={styles.backButtonTouch}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-            >
-              <Text style={[styles.backArrow, { color: textColor }]}>‹ Back</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            {renderModalContent()}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  modalContainer: { flex: 1 },
-  topBar: {
+  container: {
+    flex: 1,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 8,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
-  modalTopBar: {
-    paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 8,
+  closeBtn: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  backButtonTouch: {
-    paddingVertical: 10,
-    paddingRight: 20,
-    alignSelf: 'flex-start',
-  },
-  backArrow: {
+  closeBtnText: {
     fontSize: 20,
-    fontWeight: 'bold',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 60,
+    fontWeight: '400',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 18,
     fontFamily: 'Georgia',
     fontWeight: 'bold',
   },
-  headerSubtitle: {
+  sealButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  sealButtonText: {
+    color: '#8C6834',
     fontSize: 14,
-    color: '#777777',
+    fontWeight: '700',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 60,
+  },
+  titleInput: {
+    fontSize: 26,
+    fontFamily: 'Georgia',
+    fontWeight: 'bold',
+    paddingVertical: 10,
+  },
+  divider: {
+    height: 1,
+    width: '100%',
+    marginVertical: 12,
+  },
+  bodyInput: {
+    fontSize: 16,
+    lineHeight: 24,
+    minHeight: 120,
     marginBottom: 20,
   },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8E8E93',
-    letterSpacing: 1,
-    marginBottom: 10,
-    marginTop: 18,
-  },
-  appearanceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  appearanceCard: {
-    flex: 1,
-    borderRadius: 16,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    borderWidth: 1,
-  },
-  appearanceIcon: { fontSize: 20, marginBottom: 4 },
-  appearanceText: { fontSize: 13, fontWeight: '600' },
-  cardBox: {
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-  },
-  colorGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  colorCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-  },
-  libraryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  libraryLabel: { fontSize: 15, fontWeight: '600' },
-  chevron: { fontSize: 18, color: '#C7C7CC' },
-  divider: { height: 1, width: '100%' },
-  footerQuote: {
-    textAlign: 'center',
-    fontStyle: 'italic',
-    color: '#8E8E93',
-    marginTop: 30,
-    fontSize: 13,
-  },
-  modalInner: { paddingTop: 10 },
-  modalTitle: { fontSize: 26, fontFamily: 'Georgia', fontWeight: 'bold' },
-  modalSub: { fontSize: 14, marginBottom: 16 },
-  listItem: {
+  photoButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 10,
-  },
-  itemTitle: { fontSize: 15, fontWeight: 'bold' },
-  itemSub: { fontSize: 12 },
-  emptyBox: {
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 24,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderRadius: 14,
-    padding: 30,
-    alignItems: 'center',
-    marginTop: 10,
+    marginBottom: 28,
+  },
+  photoIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  photoText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginBottom: 14,
   },
   grid2Col: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
   },
-  gridCard: {
+  durationCard: {
     width: '48%',
-    borderRadius: 14,
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    padding: 14,
-    marginBottom: 12,
+    marginBottom: 10,
+  },
+  durationText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  customDateCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  customDateLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  customDateLabel: {
+    fontSize: 13,
+  },
+  customDateValue: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  helperText: {
+    fontSize: 12,
+    marginTop: 8,
+    marginBottom: 10,
+  },
+  categoryWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  categoryPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+    marginBottom: 4,
+  },
+  categoryText: {
+    fontSize: 13,
   },
 });
