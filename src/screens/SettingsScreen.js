@@ -1,253 +1,156 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Alert,
-  Platform,
+  Switch,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
-export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' }) {
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [category, setCategory] = useState('School');
-  const [selectedDuration, setSelectedDuration] = useState('Tomorrow'); // 'Tomorrow' | 'In 2 days' | 'In 3 days' | '1 week' | 'custom'
-  const [customDate, setCustomDate] = useState(new Date('2026-07-21'));
-  const [showDatePicker, setShowDatePicker] = useState(false);
+export default function SettingsScreen({
+  letters = [],
+  setLetters,
+  themeMode = 'Light',
+  setThemeMode,
+  accentColor = '#D9822B',
+  setAccentColor,
+  onBack,
+}) {
+  const isDark = themeMode === 'Dark';
 
-  const categories = [
-    'Goals',
-    'Memories',
-    'School',
-    'Personal',
-    'Family',
-    'Friends',
-    'Hobbies',
-    'Travel',
-    'Other',
-  ];
-
-  const durationOptions = [
-    { id: 'Tomorrow', label: 'Tomorrow', days: 1 },
-    { id: 'In 2 days', label: 'In 2 days', days: 2 },
-    { id: 'In 3 days', label: 'In 3 days', days: 3 },
-    { id: '1 week', label: '1 week', days: 7 },
-  ];
-
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      setCustomDate(selectedDate);
-      setSelectedDuration('custom');
-    }
-  };
-
-  const handleSave = () => {
-    if (!title.trim()) {
-      Alert.alert('Missing Title', 'Please give your letter a title.');
-      return;
-    }
-
-    if (!content.trim()) {
-      Alert.alert('Missing Content', 'Please write some content before sealing.');
-      return;
-    }
-
-    let targetDate = new Date();
-
-    if (selectedDuration === 'custom' && customDate) {
-      targetDate = customDate;
-    } else {
-      const option = durationOptions.find((opt) => opt.id === selectedDuration);
-      const daysToAdd = option ? option.days : 1;
-      targetDate.setDate(targetDate.getDate() + daysToAdd);
-    }
-
-    const newLetter = {
-      id: Date.now().toString(),
-      title: title.trim(),
-      content: content.trim(),
-      type: 'future',
-      category: category,
-      isFavorite: false,
-      isArchived: false,
-      createdAt: new Date().toISOString(),
-      unlockDate: targetDate.toISOString(),
-    };
-
-    onSave(newLetter);
-  };
-
-  // Light/Dark Theme colors matching design
+  // Dynamic Theme Colors
   const bgColor = isDark ? '#121212' : '#FAF8F5';
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
-  const placeholderColor = isDark ? '#666666' : '#B0B0B0';
+
+  const accentColors = ['#D9822B', '#E56B6F', '#4A90E2', '#2EC4B6', '#9B51E0'];
+
+  const handleClearAllData = () => {
+    Alert.alert(
+      'Delete All Letters',
+      'Are you sure you want to permanently delete all your letters and reminders? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete All',
+          style: 'destructive',
+          onPress: () => {
+            if (setLetters) {
+              setLetters([]);
+            }
+            Alert.alert('Cleared', 'All letters have been removed.');
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* Top Header Row */}
-      <View style={styles.topHeader}>
-        <TouchableOpacity style={styles.closeBtn} activeOpacity={0.6}>
-          <Text style={[styles.closeBtnText, { color: textColor }]}>✕</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>New letter</Text>
+      {/* Top Header */}
+      <View style={styles.header}>
         <TouchableOpacity
-          style={[styles.sealButton, { backgroundColor: '#EAD1A8' }]}
-          onPress={handleSave}
-          activeOpacity={0.8}
+          onPress={onBack}
+          style={styles.backButton}
+          activeOpacity={0.6}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
         >
-          <Text style={styles.sealButtonText}>Seal</Text>
+          <Text style={[styles.backText, { color: accentColor }]}>‹ Back</Text>
         </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: textColor }]}>Settings</Text>
+        <View style={{ width: 50 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Title Input */}
-        <TextInput
-          style={[styles.titleInput, { color: textColor }]}
-          placeholder="Give your letter a title"
-          placeholderTextColor={placeholderColor}
-          value={title}
-          onChangeText={setTitle}
-        />
-
-        <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-        {/* Content Body Input */}
-        <TextInput
-          style={[styles.bodyInput, { color: textColor }]}
-          placeholder="Dear future me, Write what you want to remember, hope, or promise yourself..."
-          placeholderTextColor={placeholderColor}
-          multiline
-          textAlignVertical="top"
-          value={content}
-          onChangeText={setContent}
-        />
-
-        {/* Attach Photo Button */}
-        <TouchableOpacity
-          style={[styles.photoButton, { borderColor }]}
-          activeOpacity={0.7}
-          onPress={() => Alert.alert('Attach Photo', 'Photo attachment option selected.')}
-        >
-          <Text style={styles.photoIcon}>📷</Text>
-          <Text style={[styles.photoText, { color: subTextColor }]}>Attach a photo</Text>
-        </TouchableOpacity>
-
-        {/* When Should It Arrive Section */}
-        <Text style={[styles.sectionTitle, { color: textColor }]}>
-          📅 When should it arrive?
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* APP THEME SECTION */}
+        <Text style={[styles.sectionHeader, { color: subTextColor }]}>
+          APPEARANCE
         </Text>
 
-        <View style={styles.grid2Col}>
-          {durationOptions.map((opt) => {
-            const isSelected = selectedDuration === opt.id;
-            return (
-              <TouchableOpacity
-                key={opt.id}
-                style={[
-                  styles.durationCard,
-                  { backgroundColor: isSelected ? accentColor : cardBg, borderColor },
-                ]}
-                onPress={() => setSelectedDuration(opt.id)}
-                activeOpacity={0.8}
-              >
-                <Text
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+          <View style={styles.row}>
+            <View>
+              <Text style={[styles.rowTitle, { color: textColor }]}>
+                Dark Mode
+              </Text>
+              <Text style={[styles.rowSub, { color: subTextColor }]}>
+                Switch between light and dark visual themes
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={(val) =>
+                setThemeMode ? setThemeMode(val ? 'Dark' : 'Light') : null
+              }
+              trackColor={{ false: '#767577', true: accentColor }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
+
+          {/* ACCENT COLOR SELECTOR */}
+          <View style={styles.column}>
+            <Text style={[styles.rowTitle, { color: textColor, marginBottom: 10 }]}>
+              Accent Color
+            </Text>
+            <View style={styles.colorRow}>
+              {accentColors.map((color) => (
+                <TouchableOpacity
+                  key={color}
                   style={[
-                    styles.durationText,
-                    { color: isSelected ? '#FFFFFF' : textColor },
+                    styles.colorCircle,
+                    { backgroundColor: color },
+                    accentColor === color && styles.colorCircleActive,
                   ]}
-                >
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+                  onPress={() => (setAccentColor ? setAccentColor(color) : null)}
+                  activeOpacity={0.8}
+                />
+              ))}
+            </View>
+          </View>
         </View>
 
-        {/* Custom Date Picker Card */}
-        <TouchableOpacity
-          style={[
-            styles.customDateCard,
-            {
-              backgroundColor: cardBg,
-              borderColor: selectedDuration === 'custom' ? accentColor : borderColor,
-            },
-          ]}
-          onPress={() => setShowDatePicker(true)}
-          activeOpacity={0.7}
-        >
-          <View style={styles.customDateLeft}>
-            <Text style={{ fontSize: 16, marginRight: 8 }}>📅</Text>
-            <Text style={[styles.customDateLabel, { color: subTextColor }]}>
-              Pick a custom date
+        {/* DATA & STORAGE SECTION */}
+        <Text style={[styles.sectionHeader, { color: subTextColor }]}>
+          DATA & STORAGE
+        </Text>
+
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+          <View style={styles.row}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>Total Letters</Text>
+            <Text style={[styles.rowBadge, { color: accentColor }]}>
+              {letters.length}
             </Text>
           </View>
-          <Text style={[styles.customDateValue, { color: textColor }]}>
-            {customDate.toLocaleDateString('en-US', {
-              weekday: 'long',
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric',
-            })}
-          </Text>
-        </TouchableOpacity>
 
-        <Text style={[styles.helperText, { color: subTextColor }]}>
-          No limit — schedule years or even decades ahead.
-        </Text>
+          <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
-        {/* Categories Section */}
-        <Text style={[styles.sectionTitle, { color: textColor, marginTop: 24 }]}>
-          Categories
-        </Text>
-
-        <View style={styles.categoryWrap}>
-          {categories.map((cat) => {
-            const isSelected = category === cat;
-            return (
-              <TouchableOpacity
-                key={cat}
-                style={[
-                  styles.categoryPill,
-                  {
-                    backgroundColor: cardBg,
-                    borderColor: isSelected ? accentColor : borderColor,
-                    borderWidth: isSelected ? 1.5 : 1,
-                  },
-                ]}
-                onPress={() => setCategory(cat)}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    styles.categoryText,
-                    { color: textColor, fontWeight: isSelected ? '700' : '500' },
-                  ]}
-                >
-                  {cat}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          <TouchableOpacity
+            style={styles.row}
+            onPress={handleClearAllData}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.rowTitle, { color: '#FF5555' }]}>
+              Delete All Data
+            </Text>
+            <Text style={{ color: '#FF5555', fontSize: 18 }}>›</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* System Calendar Picker */}
-        {showDatePicker && (
-          <DateTimePicker
-            value={customDate}
-            mode="date"
-            display="default"
-            minimumDate={new Date()}
-            onChange={handleDateChange}
-          />
-        )}
+        {/* ABOUT SECTION */}
+        <Text style={[styles.sectionHeader, { color: subTextColor }]}>ABOUT</Text>
+
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+          <View style={styles.row}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>App Version</Text>
+            <Text style={[styles.rowSub, { color: subTextColor }]}>1.0.0</Text>
+          </View>
+        </View>
       </ScrollView>
     </View>
   );
@@ -257,140 +160,87 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  topHeader: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 12,
   },
-  closeBtn: {
-    width: 32,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
+  backButton: {
+    paddingVertical: 8,
+    paddingRight: 12,
   },
-  closeBtnText: {
+  backText: {
     fontSize: 20,
-    fontWeight: '400',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontFamily: 'Georgia',
     fontWeight: 'bold',
   },
-  sealButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  sealButtonText: {
-    color: '#8C6834',
-    fontSize: 14,
-    fontWeight: '700',
+  headerTitle: {
+    fontSize: 22,
+    fontFamily: 'Georgia',
+    fontWeight: 'bold',
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
-  titleInput: {
-    fontSize: 26,
-    fontFamily: 'Georgia',
+  sectionHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: 20,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+  },
+  column: {
+    paddingVertical: 12,
+  },
+  rowTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  rowSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  rowBadge: {
+    fontSize: 16,
     fontWeight: 'bold',
-    paddingVertical: 10,
   },
   divider: {
     height: 1,
     width: '100%',
-    marginVertical: 12,
   },
-  bodyInput: {
-    fontSize: 16,
-    lineHeight: 24,
-    minHeight: 120,
-    marginBottom: 20,
-  },
-  photoButton: {
+  colorRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    marginBottom: 28,
+    gap: 12,
   },
-  photoIcon: {
-    fontSize: 16,
-    marginRight: 8,
+  colorCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
   },
-  photoText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  sectionTitle: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 14,
-  },
-  grid2Col: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  durationCard: {
-    width: '48%',
-    paddingVertical: 14,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    marginBottom: 10,
-  },
-  durationText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  customDateCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginTop: 2,
-  },
-  customDateLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  customDateLabel: {
-    fontSize: 13,
-  },
-  customDateValue: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  helperText: {
-    fontSize: 12,
-    marginTop: 8,
-    marginBottom: 10,
-  },
-  categoryWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  categoryPill: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginBottom: 4,
-  },
-  categoryText: {
-    fontSize: 13,
+  colorCircleActive: {
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
   },
 });
