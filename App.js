@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -9,6 +8,11 @@ import {
   TouchableOpacity,
   StatusBar,
 } from 'react-native';
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 import {
   loadLettersFromStorage,
@@ -41,29 +45,18 @@ const INITIAL_SAMPLE_LETTERS = [
     isFavorite: true,
     content: 'Hey self! Remember to keep working on your React Native projects.',
   },
-  {
-    id: '3',
-    title: 'Reminder: Call your grandparents!',
-    type: 'reminder',
-    category: 'Personal',
-    isFavorite: false,
-    content: 'Check in with them this weekend.',
-  },
-  {
-    id: '4',
-    title: 'Next Semester Checklist',
-    type: 'reminder',
-    category: 'School',
-    isFavorite: false,
-    content: 'Get textbooks, prep binder, review class schedule.',
-  },
 ];
 
-export default function App() {
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('home');
   const [letters, setLetters] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLetter, setSelectedLetter] = useState(null);
+
+  // Global Theme States
+  const [themeMode, setThemeMode] = useState('Light'); // 'Light' | 'Dark'
+  const [accentColor, setAccentColor] = useState('#D9822B');
 
   useEffect(() => {
     async function initStorage() {
@@ -89,11 +82,7 @@ export default function App() {
     setActiveTab('home');
   };
 
-  const handleResetData = async () => {
-    await clearLettersFromStorage();
-    setLetters([]);
-    setActiveTab('home');
-  };
+  const isDark = themeMode === 'Dark';
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -103,20 +92,46 @@ export default function App() {
             letters={letters}
             setLetters={setLetters}
             onSelectLetter={(letter) => setSelectedLetter(letter)}
+            isDark={isDark}
+            accentColor={accentColor}
           />
         );
       case 'write':
-        return <WriteScreen onSave={handleAddLetter} />;
+        return (
+          <WriteScreen
+            onSave={handleAddLetter}
+            isDark={isDark}
+            accentColor={accentColor}
+          />
+        );
       case 'archive':
-        return <ArchiveScreen letters={letters.filter((l) => l.isArchived)} />;
+        return (
+          <ArchiveScreen
+            letters={letters.filter((l) => l.isArchived)}
+            isDark={isDark}
+            accentColor={accentColor}
+          />
+        );
       case 'settings':
-        return <SettingsScreen letters={letters} setLetters={setLetters} />;
+        return (
+          <SettingsScreen
+            letters={letters}
+            setLetters={setLetters}
+            themeMode={themeMode}
+            setThemeMode={setThemeMode}
+            accentColor={accentColor}
+            setAccentColor={setAccentColor}
+            onBack={() => setActiveTab('home')}
+          />
+        );
       default:
         return (
           <HomeScreen
             letters={letters}
             setLetters={setLetters}
             onSelectLetter={(letter) => setSelectedLetter(letter)}
+            isDark={isDark}
+            accentColor={accentColor}
           />
         );
     }
@@ -124,18 +139,40 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, styles.loadingCenter]}>
-        <ActivityIndicator size="large" color="#ff9f43" />
-      </SafeAreaView>
+      <View
+        style={[
+          styles.container,
+          styles.loadingCenter,
+          { backgroundColor: isDark ? '#121212' : '#FAF8F5' },
+        ]}
+      >
+        <ActivityIndicator size="large" color={accentColor} />
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#121212" />
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDark ? '#121212' : '#FAF8F5',
+          paddingTop: insets.top, // Keeps content clear of notch/camera cutouts
+        },
+      ]}
+    >
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={isDark ? '#121212' : '#FAF8F5'}
+      />
       <View style={styles.content}>{renderActiveScreen()}</View>
 
-      <BottomNavBar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <BottomNavBar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isDark={isDark}
+        accentColor={accentColor}
+      />
 
       {/* Modal Detail Popup */}
       <Modal
@@ -145,15 +182,34 @@ export default function App() {
         onRequestClose={() => setSelectedLetter(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalBadge}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: isDark ? '#1E1E1E' : '#FFFFFF' },
+            ]}
+          >
+            <Text style={[styles.modalBadge, { color: accentColor }]}>
               {selectedLetter?.category || 'Personal'}
             </Text>
-            <Text style={styles.modalTitle}>{selectedLetter?.title}</Text>
-            <Text style={styles.modalBody}>{selectedLetter?.content}</Text>
+            <Text
+              style={[
+                styles.modalTitle,
+                { color: isDark ? '#FFFFFF' : '#2B2B2B' },
+              ]}
+            >
+              {selectedLetter?.title}
+            </Text>
+            <Text
+              style={[
+                styles.modalBody,
+                { color: isDark ? '#CCCCCC' : '#555555' },
+              ]}
+            >
+              {selectedLetter?.content}
+            </Text>
 
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[styles.closeButton, { backgroundColor: accentColor }]}
               onPress={() => setSelectedLetter(null)}
             >
               <Text style={styles.closeButtonText}>Close</Text>
@@ -161,14 +217,21 @@ export default function App() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
   },
   content: {
     flex: 1,
@@ -179,19 +242,17 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#1e1e1e',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#333',
+    borderColor: '#EAE5DF',
   },
   modalBadge: {
-    color: '#ff9f43',
     fontWeight: 'bold',
     fontSize: 12,
     marginBottom: 6,
@@ -200,17 +261,14 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#ffffff',
     marginBottom: 12,
   },
   modalBody: {
     fontSize: 15,
-    color: '#cccccc',
     lineHeight: 22,
     marginBottom: 20,
   },
   closeButton: {
-    backgroundColor: '#ff9f43',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
