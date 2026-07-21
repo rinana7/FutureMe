@@ -181,14 +181,15 @@ function AppContent() {
         onRequestClose={() => setActiveGridModal(null)}
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
+          {/* Lowered Header with Clear Back Button */}
           <View style={styles.modalTopBar}>
             <TouchableOpacity
               onPress={() => setActiveGridModal(null)}
-              activeOpacity={0.7}
+              activeOpacity={0.6}
               style={styles.backButtonTouch}
-              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             >
-              <Text style={[styles.backArrow, { color: textColor }]}>‹ Back</Text>
+              <Text style={[styles.backArrow, { color: accentColor }]}>‹ Back</Text>
             </TouchableOpacity>
           </View>
 
@@ -329,16 +330,16 @@ const styles = StyleSheet.create({
   modalContainer: { flex: 1 },
   modalTopBar: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 8,
+    paddingTop: 28, // Extra top padding moves the back button lower down
+    paddingBottom: 12,
   },
   backButtonTouch: {
-    paddingVertical: 8,
-    paddingRight: 20,
+    paddingVertical: 10,
+    paddingRight: 24,
     alignSelf: 'flex-start',
   },
-  backArrow: { fontSize: 20, fontWeight: 'bold' },
-  modalScrollContent: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
+  backArrow: { fontSize: 22, fontWeight: 'bold' },
+  modalScrollContent: { paddingHorizontal: 20, paddingTop: 6, paddingBottom: 40 },
   modalTitle: { fontSize: 28, fontFamily: 'Georgia', fontWeight: 'bold' },
   modalSub: { fontSize: 14, marginBottom: 16 },
   listItem: {
