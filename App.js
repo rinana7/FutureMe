@@ -10,11 +10,16 @@ import {
   StatusBar,
 } from 'react-native';
 
-import { loadLettersFromStorage, saveLettersToStorage } from './src/utils/storage';
+import {
+  loadLettersFromStorage,
+  saveLettersToStorage,
+  clearLettersFromStorage,
+} from './src/utils/storage';
 
 import HomeScreen from './src/screens/HomeScreen';
 import WriteScreen from './src/screens/WriteScreen';
 import ArchiveScreen from './src/screens/ArchiveScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 import BottomNavBar from './src/components/BottomNavBar';
 
@@ -84,6 +89,12 @@ export default function App() {
     setActiveTab('home');
   };
 
+  const handleResetData = async () => {
+    await clearLettersFromStorage();
+    setLetters([]);
+    setActiveTab('home');
+  };
+
   const renderActiveScreen = () => {
     switch (activeTab) {
       case 'home':
@@ -98,6 +109,8 @@ export default function App() {
         return <WriteScreen onSave={handleAddLetter} />;
       case 'archive':
         return <ArchiveScreen letters={letters.filter((l) => l.isArchived)} />;
+      case 'settings':
+        return <SettingsScreen onResetData={handleResetData} />;
       default:
         return (
           <HomeScreen
