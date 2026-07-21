@@ -16,6 +16,7 @@ export default function HomeScreen({
   isDark = false,
   accentColor = '#D9822B',
   onNavigateToWrite,
+  onNavigateToTab,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('All'); // 'All' | 'Unlocked' | 'Scheduled'
@@ -28,10 +29,13 @@ export default function HomeScreen({
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
   const inputBg = isDark ? '#262626' : '#F2EFEA';
 
-  // Stats calculation
-  const totalLetters = letters.length;
-  const unlockedCount = letters.filter((l) => l.isUnlocked || l.type !== 'future').length;
-  const scheduledCount = totalLetters - unlockedCount;
+  // Counts for quick action grid buttons
+  const favoritesCount = letters.filter((l) => l.isFavorite).length;
+  const archiveCount = letters.filter((l) => l.isArchived).length;
+
+  // Find next upcoming letter for the hero countdown
+  const scheduledLetters = letters.filter((l) => !l.isUnlocked && l.unlockDate);
+  const nextLetter = scheduledLetters.length > 0 ? scheduledLetters[0] : null;
 
   // Toggle favorite helper
   const handleToggleFavorite = (id, event) => {
@@ -56,40 +60,43 @@ export default function HomeScreen({
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Top Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={[styles.greeting, { color: subTextColor }]}>Welcome back</Text>
-            <Text style={[styles.headerTitle, { color: textColor }]}>My Letters</Text>
-          </View>
-          {onNavigateToWrite && (
-            <TouchableOpacity
-              style={[styles.quickWriteBtn, { backgroundColor: accentColor }]}
-              onPress={onNavigateToWrite}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.quickWriteBtnText}>+ Write</Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Header Greeting */}
+        <Text style={[styles.greeting, { color: subTextColor }]}>Welcome back</Text>
+        <Text style={[styles.headerTitle, { color: textColor }]}>Future Letter</Text>
+        <Text style={[styles.subQuote, { color: accentColor }]}>✨ Write today. Discover tomorrow.</Text>
 
-        {/* Quick Stats Bar */}
-        <View style={[styles.statsCard, { backgroundColor: cardBg, borderColor }]}>
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: accentColor }]}>{totalLetters}</Text>
-            <Text style={[styles.statLabel, { color: subTextColor }]}>Total</Text>
+        {/* Hero Card: Next To Arrive */}
+        {nextLetter && (
+          <View style={[styles.heroCard, { backgroundColor: cardBg, borderColor }]}>
+            <View style={styles.heroHeader}>
+              <Text style={[styles.heroTag, { color: accentColor }]}>⏳ NEXT TO ARRIVE</Text>
+              <View style={[styles.arrivesPill, { backgroundColor: accentColor }]}>
+                <Text style={styles.arrivesText}>Arrives soon</Text>
+              </View>
+            </View>
+            <Text style={[styles.heroTitle, { color: textColor }]}>{nextLetter.title}</Text>
+
+            {/* Countdown Grid */}
+            <View style={styles.countdownRow}>
+              <View style={[styles.timeBox, { backgroundColor: inputBg }]}>
+                <Text style={[styles.timeNum, { color: textColor }]}>0</Text>
+                <Text style={[styles.timeLabel, { color: subTextColor }]}>YEARS</Text>
+              </View>
+              <View style={[styles.timeBox, { backgroundColor: inputBg }]}>
+                <Text style={[styles.timeNum, { color: textColor }]}>0</Text>
+                <Text style={[styles.timeLabel, { color: subTextColor }]}>MONTHS</Text>
+              </View>
+              <View style={[styles.timeBox, { backgroundColor: inputBg }]}>
+                <Text style={[styles.timeNum, { color: textColor }]}>0</Text>
+                <Text style={[styles.timeLabel, { color: subTextColor }]}>DAYS</Text>
+              </View>
+              <View style={[styles.timeBox, { backgroundColor: inputBg }]}>
+                <Text style={[styles.timeNum, { color: textColor }]}>17</Text>
+                <Text style={[styles.timeLabel, { color: subTextColor }]}>HOURS</Text>
+              </View>
+            </View>
           </View>
-          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: textColor }]}>{unlockedCount}</Text>
-            <Text style={[styles.statLabel, { color: subTextColor }]}>Unlocked</Text>
-          </View>
-          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
-          <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: subTextColor }]}>{scheduledCount}</Text>
-            <Text style={[styles.statLabel, { color: subTextColor }]}>Scheduled</Text>
-          </View>
-        </View>
+        )}
 
         {/* Search Bar */}
         <View style={[styles.searchBox, { backgroundColor: inputBg }]}>
@@ -108,7 +115,7 @@ export default function HomeScreen({
           )}
         </View>
 
-        {/* Filter Pills */}
+        {/* Filter Pills (All / Unlocked / Scheduled) */}
         <View style={styles.filterContainer}>
           {['All', 'Unlocked', 'Scheduled'].map((tab) => {
             const isActive = activeFilter === tab;
@@ -136,13 +143,77 @@ export default function HomeScreen({
           })}
         </View>
 
+        {/* Quick Action Grid Buttons (Favorites, Categories, Badges, Archive) */}
+        <View style={styles.gridContainer}>
+          <TouchableOpacity
+            style={[styles.gridCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.7}
+            onPress={() => onNavigateToTab && onNavigateToTab('favorites')}
+          >
+            <View style={[styles.gridIconCircle, { backgroundColor: isDark ? '#2A2A2A' : '#FFF6EC' }]}>
+              <Text style={{ fontSize: 18 }}>⭐</Text>
+            </View>
+            <Text style={[styles.gridLabel, { color: textColor }]}>Favorites</Text>
+            <Text style={[styles.gridCount, { color: subTextColor }]}>{favoritesCount}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.gridCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.7}
+            onPress={() => onNavigateToTab && onNavigateToTab('categories')}
+          >
+            <View style={[styles.gridIconCircle, { backgroundColor: isDark ? '#2A2A2A' : '#FFF6EC' }]}>
+              <Text style={{ fontSize: 18 }}>🗂️</Text>
+            </View>
+            <Text style={[styles.gridLabel, { color: textColor }]}>Categories</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.gridCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.7}
+            onPress={() => onNavigateToTab && onNavigateToTab('achievements')}
+          >
+            <View style={[styles.gridIconCircle, { backgroundColor: isDark ? '#2A2A2A' : '#FFF6EC' }]}>
+              <Text style={{ fontSize: 18 }}>🏆</Text>
+            </View>
+            <Text style={[styles.gridLabel, { color: textColor }]}>Badges</Text>
+            <Text style={[styles.gridCount, { color: subTextColor }]}>2</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.gridCard, { backgroundColor: cardBg, borderColor }]}
+            activeOpacity={0.7}
+            onPress={() => onNavigateToTab && onNavigateToTab('archive')}
+          >
+            <View style={[styles.gridIconCircle, { backgroundColor: isDark ? '#2A2A2A' : '#FFF6EC' }]}>
+              <Text style={{ fontSize: 18 }}>📦</Text>
+            </View>
+            <Text style={[styles.gridLabel, { color: textColor }]}>Archive</Text>
+            <Text style={[styles.gridCount, { color: subTextColor }]}>{archiveCount}</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Big Action Button: Write a new letter */}
+        <TouchableOpacity
+          style={[styles.writeMainBtn, { backgroundColor: accentColor }]}
+          activeOpacity={0.85}
+          onPress={onNavigateToWrite}
+        >
+          <Text style={styles.writeMainBtnText}>✏️ Write a new letter</Text>
+        </TouchableOpacity>
+
+        {/* Letters Section Title */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: subTextColor }]}>SEALED LETTERS</Text>
+        </View>
+
         {/* Letters List */}
         {filteredLetters.length === 0 ? (
           <View style={[styles.emptyCard, { borderColor }]}>
             <Text style={{ fontSize: 32, marginBottom: 8 }}>📜</Text>
             <Text style={[styles.emptyTitle, { color: textColor }]}>No letters found</Text>
             <Text style={[styles.emptySub, { color: subTextColor }]}>
-              {searchQuery ? 'Try another search term' : 'Tap "+ Write" above to create your first letter!'}
+              {searchQuery ? 'Try another search term' : 'Tap "Write a new letter" above to start!'}
             </Text>
           </View>
         ) : (
@@ -212,56 +283,74 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 60,
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
   greeting: {
     fontSize: 13,
     fontWeight: '500',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 30,
     fontFamily: 'Georgia',
     fontWeight: 'bold',
   },
-  quickWriteBtn: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  quickWriteBtnText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  subQuote: {
     fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 2,
+    marginBottom: 16,
   },
-  statsCard: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+  heroCard: {
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
     marginBottom: 16,
-    justifyContent: 'space-around',
-    alignItems: 'center',
   },
-  statItem: {
+  heroHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    flex: 1,
+    marginBottom: 8,
   },
-  statValue: {
-    fontSize: 18,
+  heroTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  arrivesPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  arrivesText: {
+    color: '#FFFFFF',
+    fontSize: 11,
     fontWeight: 'bold',
   },
-  statLabel: {
-    fontSize: 11,
-    marginTop: 2,
+  heroTitle: {
+    fontSize: 20,
+    fontFamily: 'Georgia',
+    fontWeight: 'bold',
+    marginBottom: 12,
   },
-  statDivider: {
-    width: 1,
-    height: '70%',
+  countdownRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  timeBox: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 12,
+    marginHorizontal: 3,
+  },
+  timeNum: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    fontFamily: 'Georgia',
+  },
+  timeLabel: {
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 2,
   },
   searchBox: {
     flexDirection: 'row',
@@ -269,7 +358,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   searchIcon: {
     fontSize: 14,
@@ -294,6 +383,66 @@ const styles = StyleSheet.create({
   filterPillText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  gridCard: {
+    width: '48%',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  gridIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  gridLabel: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  gridCount: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  writeMainBtn: {
+    borderRadius: 25,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  writeMainBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   letterCard: {
     borderRadius: 18,

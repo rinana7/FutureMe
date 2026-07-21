@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -16,9 +16,22 @@ export default function SettingsScreen({
   setThemeMode,
   accentColor,
   setAccentColor,
+  initialModal = null,
+  onClearInitialModal,
   onBack,
 }) {
-  const [activeModal, setActiveModal] = useState(null); // 'themes' | 'categories' | 'favorites' | 'achievements' | 'deleted'
+  const [activeModal, setActiveModal] = useState(initialModal);
+
+  useEffect(() => {
+    if (initialModal) {
+      setActiveModal(initialModal);
+    }
+  }, [initialModal]);
+
+  const handleCloseModal = () => {
+    setActiveModal(null);
+    if (onClearInitialModal) onClearInitialModal();
+  };
 
   const accentColors = [
     '#007AFF', '#2AC7E2', '#8E44AD', '#EC407A',
@@ -53,10 +66,6 @@ export default function SettingsScreen({
   const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
-
-  const handleCloseModal = () => {
-    setActiveModal(null);
-  };
 
   const renderModalContent = () => {
     switch (activeModal) {
@@ -198,7 +207,6 @@ export default function SettingsScreen({
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* Top Header Bar for Main Settings Screen */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.backButtonTouch}>
           <Text style={[styles.backArrow, { color: textColor }]}>‹ Back</Text>
@@ -209,7 +217,6 @@ export default function SettingsScreen({
         <Text style={[styles.headerTitle, { color: textColor }]}>Settings</Text>
         <Text style={styles.headerSubtitle}>Make it yours</Text>
 
-        {/* APPEARANCE */}
         <Text style={styles.sectionHeader}>APPEARANCE</Text>
         <View style={styles.appearanceRow}>
           {['Light', 'Dark'].map((mode) => (
@@ -228,7 +235,6 @@ export default function SettingsScreen({
           ))}
         </View>
 
-        {/* ACCENT COLOR */}
         <Text style={styles.sectionHeader}>ACCENT COLOR</Text>
         <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor }]}>
           <View style={styles.colorGrid}>
@@ -246,7 +252,6 @@ export default function SettingsScreen({
           </View>
         </View>
 
-        {/* LIBRARY LIST */}
         <Text style={styles.sectionHeader}>LIBRARY</Text>
         <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor, paddingVertical: 4 }]}>
           <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('themes')}>
@@ -270,10 +275,7 @@ export default function SettingsScreen({
 
           <View style={[styles.divider, { backgroundColor: borderColor }]} />
 
-          <TouchableOpacity
-            style={styles.libraryRow}
-            onPress={() => setActiveModal('achievements')}
-          >
+          <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('achievements')}>
             <Text style={[styles.libraryLabel, { color: textColor }]}>🏆 Achievements</Text>
             <Text style={styles.chevron}>›</Text>
           </TouchableOpacity>
@@ -286,25 +288,11 @@ export default function SettingsScreen({
           </TouchableOpacity>
         </View>
 
-        {/* NOTIFICATIONS */}
-        <Text style={styles.sectionHeader}>NOTIFICATIONS</Text>
-        <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor }]}>
-          <Text style={{ fontSize: 13, color: subTextColor, lineHeight: 18 }}>
-            🔔 Milestone alerts at 1 month, 1 week, and 1 day before each delivery are enabled.
-          </Text>
-        </View>
-
         <Text style={styles.footerQuote}>Write today. Discover tomorrow.</Text>
       </ScrollView>
 
-      {/* Sub-Screen Modal View */}
-      <Modal
-        visible={activeModal !== null}
-        animationType="slide"
-        onRequestClose={handleCloseModal}
-      >
+      <Modal visible={activeModal !== null} animationType="slide" onRequestClose={handleCloseModal}>
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
-          {/* Header with increased top padding for sub-modal back button */}
           <View style={styles.modalTopBar}>
             <TouchableOpacity
               onPress={handleCloseModal}
@@ -334,7 +322,7 @@ const styles = StyleSheet.create({
   },
   modalTopBar: {
     paddingHorizontal: 20,
-    paddingTop: 28, // Pushes back button down below the status bar/notch
+    paddingTop: 28,
     paddingBottom: 8,
   },
   backButtonTouch: {
