@@ -7,8 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Modal,
+  Platform,
 } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function WriteScreen({ onSave }) {
   const [title, setTitle] = useState('');
@@ -20,13 +21,12 @@ export default function WriteScreen({ onSave }) {
   const [unlockYears, setUnlockYears] = useState(1);
 
   // Quick Reminder notification settings
-  const [reminderDays, setReminderDays] = useState(1); // Default 1 day
-  const [customDate, setCustomDate] = useState(''); // Stores custom YYYY-MM-DD
-  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [reminderDays, setReminderDays] = useState(1);
+  const [customDate, setCustomDate] = useState(null); // Stores native Date object
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const categories = ['Future', 'Personal', 'School', 'Work'];
 
-  // Time Capsule duration presets
   const capsuleOptions = [
     { label: '6 Months', years: 0.5 },
     { label: '1 Year', years: 1 },
@@ -34,7 +34,6 @@ export default function WriteScreen({ onSave }) {
     { label: '5 Years', years: 5 },
   ];
 
-  // Quick Reminder notification presets
   const reminderPresets = [
     { label: '1 Day', days: 1 },
     { label: '2 Days', days: 2 },
@@ -42,6 +41,13 @@ export default function WriteScreen({ onSave }) {
     { label: '1 Week', days: 7 },
     { label: 'None', days: 0 },
   ];
+
+  const handleDateChange = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios'); // On Android, picker dismisses automatically after selection
+    if (selectedDate) {
+      setCustomDate(selectedDate);
+    }
+  };
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -60,11 +66,11 @@ export default function WriteScreen({ onSave }) {
       targetDate.setFullYear(targetDate.getFullYear() + unlockYears);
     } else if (type === 'reminder') {
       if (customDate) {
-        targetDate = new Date(customDate);
+        targetDate = customDate;
       } else if (reminderDays > 0) {
         targetDate.setDate(targetDate.getDate() + reminderDays);
       } else {
-        targetDate = null; // 'None' selected
+        targetDate = null;
       }
     }
 
@@ -84,17 +90,8 @@ export default function WriteScreen({ onSave }) {
     onSave(newLetter);
   };
 
-  // Quick calendar date selection handler
-  const handleSelectCustomDate = (daysAhead) => {
-    const d = new Date();
-    d.setDate(d.getDate() + daysAhead);
-    setCustomDate(d.toISOString().split('T')[0]);
-    setShowCalendarModal(false);
-  };
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Title Header */}
       <Text style={styles.headerTitle}>Create New Letter</Text>
 
       {/* Type Switcher */}
@@ -157,7 +154,7 @@ export default function WriteScreen({ onSave }) {
         </ScrollView>
       </View>
 
-      {/* Time Capsule Lock Duration */}
+      {/* Lock Duration (Time Capsule) */}
       {type === 'future' && (
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Lock Duration</Text>
@@ -185,13 +182,13 @@ export default function WriteScreen({ onSave }) {
         </View>
       )}
 
-      {/* Quick Reminder Notification Setting */}
+      {/* Remind Me Duration (Quick Reminder) */}
       {type === 'reminder' && (
         <View style={styles.inputGroup}>
           <View style={styles.labelRow}>
             <Text style={styles.label}>Remind Me In</Text>
-            <TouchableOpacity onPress={() => setShowCalendarModal(true)}>
-              <Text style={styles.calendarLink}>📅 Calendar Pick</Text>
+            <TouchableOpacity onPress={() => setShowDatePicker(true)}>
+              <Text style={styles.calendarLink}>📅 Select Date</Text>
             </TouchableOpacity>
           </View>
 
@@ -204,7 +201,7 @@ export default function WriteScreen({ onSave }) {
                   style={[styles.durationBox, isActive && styles.durationBoxActive]}
                   onPress={() => {
                     setReminderDays(opt.days);
-                    setCustomDate('');
+                    setCustomDate(null);
                   }}
                 >
                   <Text
@@ -223,17 +220,28 @@ export default function WriteScreen({ onSave }) {
           {customDate ? (
             <View style={styles.selectedDateBadge}>
               <Text style={styles.selectedDateText}>
-                📆 Selected Date: {customDate}
+                📆 Target Date: {customDate.toLocaleDateString()}
               </Text>
-              <TouchableOpacity onPress={() => setCustomDate('')}>
+              <TouchableOpacity onPress={() => setCustomDate(null)}>
                 <Text style={styles.clearDateText}>Clear</Text>
               </TouchableOpacity>
             </View>
           ) : null}
+
+          {/* Native System Calendar Dialog */}
+          {showDatePicker && (
+            <DateTimePicker
+              value={customDate || new Date()}
+              mode="date"
+              display="default"
+              minimumDate={new Date()}
+              onChange={handleDateChange}
+            />
+          )}
         </View>
       )}
 
-      {/* Content Input */}
+      {/* Body Content Input */}
       <View style={styles.inputGroup}>
         <Text style={styles.label}>Content</Text>
         <TextInput
@@ -254,51 +262,6 @@ export default function WriteScreen({ onSave }) {
           {type === 'future' ? '🔒 Seal & Lock Letter' : '💾 Save Reminder'}
         </Text>
       </TouchableOpacity>
-
-      {/* Calendar Date Picker Modal */}
-      <Modal
-        visible={showCalendarModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowCalendarModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>📅 Choose Reminder Date</Text>
-            <Text style={styles.modalSubtitle}>
-              Select a target date for your notification:
-            </Text>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => handleSelectCustomDate(5)}
-            >
-              <Text style={styles.modalOptionText}>5 Days from today</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => handleSelectCustomDate(14)}
-            >
-              <Text style={styles.modalOptionText}>2 Weeks from today</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => handleSelectCustomDate(30)}
-            >
-              <Text style={styles.modalOptionText}>1 Month from today</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalCloseBtn}
-              onPress={() => setShowCalendarModal(false)}
-            >
-              <Text style={styles.modalCloseBtnText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </ScrollView>
   );
 }
@@ -457,51 +420,6 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#ffffff',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  // Calendar Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 16,
-  },
-  modalOption: {
-    backgroundColor: '#2a2a2a',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  modalOptionText: {
-    color: '#ffffff',
-    fontSize: 14,
-  },
-  modalCloseBtn: {
-    marginTop: 8,
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  modalCloseBtnText: {
-    color: '#ff5555',
     fontWeight: 'bold',
   },
 });
