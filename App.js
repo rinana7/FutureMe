@@ -12,6 +12,17 @@ import {
   Alert
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as Notifications from 'expo-notifications';
+
+// Tells the app how to handle notifications when the app is open in the foreground
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
 
 // Define our Stationery Themes
 const THEMES = {
@@ -26,6 +37,16 @@ export default function App() {
   const [currentScreen, setCurrentScreen] = useState('home');
   const [selectedLetter, setSelectedLetter] = useState(null);
   
+  useEffect(() => {
+  async function requestPermissions() {
+    const { status } = await Notifications.requestPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission for notifications was denied!');
+    }
+  }
+  requestPermissions();
+}, []);
+
   // Form Input States
   const [titleInput, setTitleInput] = useState('');
   const [contentInput, setContentInput] = useState('');
@@ -226,6 +247,25 @@ export default function App() {
       lastModified: getFormattedToday()
     };
 
+    const handleSealDraft = async (letterTitle) => {
+  // 1. Existing logic to update state/lock the letter...
+
+  // 2. Schedule a notification (testing 5 seconds from now)
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: "Letter Unlocked! 🔒",
+      body: `Your letter "${letterTitle || 'Future Self'}" is ready to be opened.`,
+      sound: true,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+      seconds: 5, // Triggers 5 seconds after pressing lock for quick testing!
+    },
+  });
+
+  alert("Draft locked! You will receive a notification in 5 seconds.");
+};
+
     setSealedLetters([newLetter, ...sealedLetters]); 
     resetForm();
     setCurrentScreen('home');
@@ -264,7 +304,20 @@ export default function App() {
         { text: "Cancel", style: "cancel" },
         {
           text: "Yes, Lock It",
-          onPress: () => {
+          onPress: async () => {
+            // schedule notifications when sealing a draft
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: "Letter Unlocked! 🔒",
+                body: `Your letter "${letter.title}" is ready to be opened.`,
+                sound: true,
+              },
+              trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+                seconds: 5, // 5 second delay for testing!
+              },
+            });
+
             setSealedLetters(sealedLetters.map(l => 
               l.id === letter.id ? { ...l, isDraft: false, lastModified: getFormattedToday() } : l
             ));

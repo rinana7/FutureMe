@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sakairina.FutureMe"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,6 +29,7 @@
     },
     "plugins": [
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "owner": "sakairina"
   }
 }
