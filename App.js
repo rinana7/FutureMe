@@ -59,6 +59,10 @@ export default function App() {
   const [activePreset, setActivePreset] = useState('Custom');
   const [showCalendar, setShowCalendar] = useState(false);
   const [selectedRawDate, setSelectedRawDate] = useState(new Date());
+ 
+  // Open Early Warning Modal State
+  const [showOpenEarlyModal, setShowOpenEarlyModal] = useState(false);
+  const [isEarlyUnlocked, setIsEarlyUnlocked] = useState(false);
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -352,6 +356,7 @@ export default function App() {
   };
 
   const handleSelectLetter = (letter) => {
+    setIsEarlyUnlocked(false);
     setSelectedLetter(letter);
     setCurrentScreen('detail');
   };
@@ -681,10 +686,36 @@ export default function App() {
           </ScrollView>
         ) : (
           /* FULLY LOCKED STATE */
+        isEarlyUnlocked ? (
+          <ScrollView contentContainerStyle={styles.detailContainer}>
+            <View style={styles.unlockedHeader}>
+              <View style={[styles.unlockedCategoryBadge, { backgroundColor: '#ff980025' }]}>
+                <Text style={[styles.unlockedCategoryText, { color: '#ff9800' }]}>⚠️ Opened Early ({selectedLetter.category})</Text>
+              </View>
+              <Text style={styles.unlockedDateText}>Original Unlock: {formatDisplayString(selectedLetter.unlockDate)}</Text>
+            </View>
+            
+            <View style={styles.headerActionRow}>
+              <Text style={styles.detailLetterTitle}>{selectedLetter.title}</Text>
+              <TouchableOpacity onPress={() => toggleFavorite(selectedLetter.id)} style={styles.actionIconButton}>
+                <Text style={styles.actionIcon}>{selectedLetter.favorite ? '⭐' : '☆'}</Text>
+              </TouchableOpacity>
+            </View>
+            
+            <View style={[styles.letterPaper, { backgroundColor: activeTheme.bg, borderColor: activeTheme.border }]}>
+              <Text style={[styles.letterPaperText, { color: activeTheme.text, fontStyle: activeTheme.fontStyle }]}>
+                {selectedLetter.content}
+              </Text>
+            </View>
+          </ScrollView>
+        ) : (
           <View style={styles.lockedContainer}>
             <View style={styles.padlockCircle}><Text style={styles.padlockEmoji}>🔒</Text></View>
             <Text style={styles.lockedWarningTitle}>This Letter is Sealed</Text>
-            <Text style={styles.lockedWarningSubtitle}>You wrote this with a promise not to open it before the unlock date. No peeking!</Text>
+            <Text style={styles.lockedWarningSubtitle}>
+              You wrote this with a promise not to open it before the unlock date. No peeking!
+            </Text>
+            
             <View style={styles.lockDetailsCard}>
               <Text style={styles.lockDetailsLabel}>DESTINATION DATE</Text>
               <Text style={styles.lockDetailsValue}>{formatDisplayString(selectedLetter.unlockDate)}</Text>
@@ -699,13 +730,48 @@ export default function App() {
                   <Text style={styles.miniFavStar}>{selectedLetter.favorite ? '⭐ Favorited' : '☆ Favorite'}</Text>
                 </TouchableOpacity>
               </View>
-              
-              <View style={styles.lockedSeparator} />
-              <Text style={styles.lockDetailsLabel}>STATIONERY THEME</Text>
-              <Text style={styles.lockDetailsValue}>🎨 {activeTheme.name}</Text>
             </View>
-            <Text style={styles.lockedTagline}>⏳ Access will be granted automatically on release day.</Text>
+
+            {/* OPEN EARLY TRIGGER BUTTON */}
+            <TouchableOpacity 
+              style={styles.openEarlyBtn} 
+              activeOpacity={0.8}
+              onPress={() => setShowOpenEarlyModal(true)}
+            >
+              <Text style={styles.openEarlyBtnText}>⚠️ Break Seal & Open Early</Text>
+            </TouchableOpacity>
+
+            {/* OPEN EARLY WARNING MODAL */}
+            {showOpenEarlyModal && (
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+                  <Text style={styles.modalEmoji}>🚨</Text>
+                  <Text style={styles.modalTitle}>Break Seal Early?</Text>
+                  <Text style={styles.modalBody}>
+                    Opening this time capsule early ruins the surprise! The message will still be locked when you go back. Are you sure you want to bypass your past self's lock?
+                  </Text>
+                  <View style={styles.modalActionRow}>
+                    <TouchableOpacity 
+                      style={styles.modalCancelBtn} 
+                      onPress={() => setShowOpenEarlyModal(false)}
+                    >
+                      <Text style={styles.modalCancelText}>Keep Sealed 🔒</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={styles.modalConfirmBtn} 
+                      onPress={() => {
+                        setShowOpenEarlyModal(false);
+                        setIsEarlyUnlocked(true);
+                      }}
+                    >
+                      <Text style={styles.modalConfirmText}>Open Anyway</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
           </View>
+        )
         )}
       </SafeAreaView>
     );
@@ -862,5 +928,87 @@ const styles = StyleSheet.create({
   lockedTagline: { color: '#bb86fc', fontSize: 13, fontWeight: '500' },
   inlineActionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   favoriteButtonMini: { backgroundColor: 'rgba(187, 134, 252, 0.15)', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(187, 134, 252, 0.3)' },
-  miniFavStar: { color: '#bb86fc', fontSize: 12, fontWeight: '600' }
+  miniFavStar: { color: '#bb86fc', fontSize: 12, fontWeight: '600' },
+  // Open Early Styles
+  openEarlyBtn: {
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ff5252',
+    backgroundColor: '#ff525215',
+  },
+  openEarlyBtnText: {
+    color: '#ff5252',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    zIndex: 1000,
+  },
+  modalCard: {
+    backgroundColor: '#1e1e1e',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333333',
+    width: '100%',
+  },
+  modalEmoji: {
+    fontSize: 40,
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 8,
+  },
+  modalBody: {
+    fontSize: 14,
+    color: '#aaa',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  modalActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#2d2d2d',
+    alignItems: 'center',
+  },
+  modalCancelText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalConfirmBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#ff5252',
+    alignItems: 'center',
+  },
+  modalConfirmText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
 });
