@@ -114,7 +114,7 @@ export default function HomeScreen({ letters = [], setLetters, onSelectLetter })
         })}
       </ScrollView>
 
-      {/* Feed List */}
+{/* Feed List */}
       <Text style={styles.sectionTitle}>Your Feed ({filteredLetters.length})</Text>
 
       {filteredLetters.map((item) => (
