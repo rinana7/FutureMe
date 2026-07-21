@@ -110,6 +110,7 @@ function AppContent() {
             letters={letters.filter((l) => l.isArchived)}
             isDark={isDark}
             accentColor={accentColor}
+            onSelectLetter={(letter) => setSelectedLetter(letter)}
           />
         );
       case 'settings':
