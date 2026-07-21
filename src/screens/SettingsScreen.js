@@ -6,16 +6,16 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
-  Switch,
 } from 'react-native';
 
 export default function SettingsScreen({
   letters = [],
   setLetters,
-  themeMode = 'Light',
+  themeMode = 'Light', // 'Light' | 'Dark' | 'System'
   setThemeMode,
   accentColor = '#D9822B',
   setAccentColor,
+  onNavigate, // Callback for navigating to sub-screens like 'Themes', 'Categories', etc.
   onBack,
 }) {
   const isDark = themeMode === 'Dark';
@@ -27,7 +27,19 @@ export default function SettingsScreen({
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
 
-  const accentColors = ['#D9822B', '#E56B6F', '#4A90E2', '#2EC4B6', '#9B51E0'];
+  const accentColors = [
+    '#007AFF', // Blue
+    '#30B0C7', // Cyan
+    '#8E44AD', // Purple
+    '#FF4F9A', // Pink
+    '#E74C3C', // Red
+    '#FF7A00', // Orange
+    '#F1C40F', // Yellow
+    '#2ECC71', // Green
+    '#1ABC9C', // Teal
+    '#D9822B', // Warm Amber (Default)
+    '#2C3E50', // Dark Charcoal
+  ];
 
   const handleClearAllData = () => {
     Alert.alert(
@@ -49,77 +61,156 @@ export default function SettingsScreen({
     );
   };
 
+  const libraryItems = [
+    { id: 'themes', label: 'Custom Themes', icon: '🎨' },
+    { id: 'categories', label: 'Categories', icon: '🏷️' },
+    { id: 'favorites', label: 'Favorites', icon: '⭐' },
+    {
+      id: 'achievements',
+      label: 'Achievements',
+      icon: '🏆',
+      badge: '2 earned',
+    },
+    { id: 'deleted', label: 'Recently Deleted', icon: '🗑️' },
+  ];
+
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={onBack}
-          style={styles.backButton}
-          activeOpacity={0.6}
-          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-        >
-          <Text style={[styles.backText, { color: accentColor }]}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>Settings</Text>
+        {onBack ? (
+          <TouchableOpacity
+            onPress={onBack}
+            style={styles.backButton}
+            activeOpacity={0.6}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <Text style={[styles.backText, { color: accentColor }]}>‹ Back</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 50 }} />
+        )}
+        <View>
+          <Text style={[styles.headerTitle, { color: textColor }]}>Settings</Text>
+          <Text style={[styles.headerSubtitle, { color: subTextColor }]}>
+            Make it yours
+          </Text>
+        </View>
         <View style={{ width: 50 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* APP THEME SECTION */}
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* APPEARANCE SECTION */}
         <Text style={[styles.sectionHeader, { color: subTextColor }]}>
           APPEARANCE
         </Text>
+        <View style={styles.appearanceTabContainer}>
+          {['Light', 'Dark', 'System'].map((mode) => {
+            const isSelected = themeMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.appearanceTab,
+                  {
+                    backgroundColor: isSelected ? cardBg : 'transparent',
+                    borderColor: isSelected ? accentColor : borderColor,
+                    borderWidth: isSelected ? 1.5 : 1,
+                  },
+                ]}
+                onPress={() => (setThemeMode ? setThemeMode(mode) : null)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.appearanceIcon}>
+                  {mode === 'Light' ? '☀️' : mode === 'Dark' ? '🌙' : '🌓'}
+                </Text>
+                <Text style={[styles.appearanceText, { color: textColor }]}>
+                  {mode}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
 
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
-          <View style={styles.row}>
-            <View>
-              <Text style={[styles.rowTitle, { color: textColor }]}>
-                Dark Mode
-              </Text>
-              <Text style={[styles.rowSub, { color: subTextColor }]}>
-                Switch between light and dark visual themes
-              </Text>
-            </View>
-            <Switch
-              value={isDark}
-              onValueChange={(val) =>
-                setThemeMode ? setThemeMode(val ? 'Dark' : 'Light') : null
-              }
-              trackColor={{ false: '#767577', true: accentColor }}
-              thumbColor="#FFFFFF"
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: borderColor }]} />
-
-          {/* ACCENT COLOR SELECTOR */}
-          <View style={styles.column}>
-            <Text style={[styles.rowTitle, { color: textColor, marginBottom: 10 }]}>
-              Accent Color
-            </Text>
-            <View style={styles.colorRow}>
-              {accentColors.map((color) => (
+        {/* ACCENT COLOR SECTION */}
+        <Text style={[styles.sectionHeader, { color: subTextColor, marginTop: 22 }]}>
+          ACCENT COLOR
+        </Text>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor, paddingVertical: 14 }]}>
+          <View style={styles.colorGrid}>
+            {accentColors.map((color) => {
+              const isSelected = accentColor === color;
+              return (
                 <TouchableOpacity
                   key={color}
                   style={[
                     styles.colorCircle,
                     { backgroundColor: color },
-                    accentColor === color && styles.colorCircleActive,
+                    isSelected && { borderColor: color, borderWidth: 3, transform: [{ scale: 1.1 }] },
                   ]}
                   onPress={() => (setAccentColor ? setAccentColor(color) : null)}
                   activeOpacity={0.8}
-                />
-              ))}
-            </View>
+                >
+                  {isSelected && (
+                    <View style={styles.selectedCircleInner} />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* LIBRARY SECTION */}
+        <Text style={[styles.sectionHeader, { color: subTextColor, marginTop: 22 }]}>
+          LIBRARY
+        </Text>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor, paddingVertical: 4 }]}>
+          {libraryItems.map((item, index) => (
+            <React.Fragment key={item.id}>
+              <TouchableOpacity
+                style={styles.libraryRow}
+                onPress={() => (onNavigate ? onNavigate(item.id) : null)}
+                activeOpacity={0.6}
+              >
+                <View style={styles.libraryLeft}>
+                  <Text style={styles.libraryIcon}>{item.icon}</Text>
+                  <Text style={[styles.rowTitle, { color: textColor }]}>
+                    {item.label}
+                  </Text>
+                </View>
+                <View style={styles.libraryRight}>
+                  {item.badge && (
+                    <Text style={[styles.badgeText, { color: subTextColor }]}>
+                      {item.badge}
+                    </Text>
+                  )}
+                  <Text style={[styles.chevron, { color: subTextColor }]}>›</Text>
+                </View>
+              </TouchableOpacity>
+              {index < libraryItems.length - 1 && (
+                <View style={[styles.divider, { backgroundColor: borderColor }]} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* NOTIFICATIONS SECTION */}
+        <Text style={[styles.sectionHeader, { color: subTextColor, marginTop: 22 }]}>
+          NOTIFICATIONS
+        </Text>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor, paddingVertical: 14 }]}>
+          <View style={styles.notificationRow}>
+            <Text style={{ fontSize: 16, marginRight: 10 }}>🔔</Text>
+            <Text style={[styles.notificationText, { color: subTextColor }]}>
+              Milestone alerts at 1 month, 1 week, and 1 day before each delivery are enabled.
+            </Text>
           </View>
         </View>
 
         {/* DATA & STORAGE SECTION */}
-        <Text style={[styles.sectionHeader, { color: subTextColor }]}>
+        <Text style={[styles.sectionHeader, { color: subTextColor, marginTop: 22 }]}>
           DATA & STORAGE
         </Text>
-
         <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
           <View style={styles.row}>
             <Text style={[styles.rowTitle, { color: textColor }]}>Total Letters</Text>
@@ -143,9 +234,10 @@ export default function SettingsScreen({
         </View>
 
         {/* ABOUT SECTION */}
-        <Text style={[styles.sectionHeader, { color: subTextColor }]}>ABOUT</Text>
-
-        <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+        <Text style={[styles.sectionHeader, { color: subTextColor, marginTop: 22 }]}>
+          ABOUT
+        </Text>
+        <View style={[styles.card, { backgroundColor: cardBg, borderColor, marginBottom: 20 }]}>
           <View style={styles.row}>
             <Text style={[styles.rowTitle, { color: textColor }]}>App Version</Text>
             <Text style={[styles.rowSub, { color: subTextColor }]}>1.0.0</Text>
@@ -165,82 +257,139 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 12,
+    paddingTop: 16,
+    paddingBottom: 10,
   },
   backButton: {
     paddingVertical: 8,
     paddingRight: 12,
   },
   backText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: 'Georgia',
     fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 2,
   },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   sectionHeader: {
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: 1,
-    marginTop: 20,
+    letterSpacing: 0.8,
     marginBottom: 8,
     marginLeft: 4,
   },
+  appearanceTabContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  appearanceTab: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appearanceIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  appearanceText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+  },
+  colorGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  colorCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectedCircleInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FFFFFF',
+  },
+  libraryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+  },
+  libraryLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  libraryIcon: {
+    fontSize: 16,
+    marginRight: 12,
+  },
+  libraryRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  badgeText: {
+    fontSize: 13,
+    marginRight: 6,
+  },
+  chevron: {
+    fontSize: 18,
+    fontWeight: '300',
+  },
+  notificationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 10,
+  },
+  notificationText: {
+    fontSize: 13,
+    lineHeight: 18,
+    flex: 1,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 12,
-  },
-  column: {
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   rowTitle: {
     fontSize: 15,
     fontWeight: '600',
   },
   rowSub: {
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: 13,
   },
   rowBadge: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   divider: {
     height: 1,
     width: '100%',
-  },
-  colorRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  colorCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  colorCircleActive: {
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
   },
 });
