@@ -43,8 +43,17 @@ const INITIAL_SAMPLE_LETTERS = [
     type: 'reminder',
     category: 'Personal',
     isFavorite: false,
-    isArchived: true,
+    isArchived: false,
     content: 'Hey self! Remember to keep working on your React Native projects.',
+  },
+  {
+    id: '3',
+    title: 'Dream Job & Career Plan',
+    type: 'reminder',
+    category: 'Goals',
+    isFavorite: true,
+    isArchived: false,
+    content: 'Keep focusing on building great user experiences!',
   },
 ];
 
@@ -55,8 +64,9 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLetter, setSelectedLetter] = useState(null);
 
-  // Direct Modal for Grid Buttons (Favorites, Categories, Achievements)
+  // Modal & Category Navigation States
   const [activeGridModal, setActiveGridModal] = useState(null); // 'favorites' | 'categories' | 'achievements'
+  const [selectedCategory, setSelectedCategory] = useState(null); // Stores tapped category name (e.g., 'Goals')
 
   // Dynamic Settings
   const [themeMode, setThemeMode] = useState('Light');
@@ -86,13 +96,18 @@ function AppContent() {
     setActiveTab('home');
   };
 
-  // Grid Navigation Handler
   const handleHomeGridNavigation = (target) => {
+    setSelectedCategory(null);
     if (target === 'archive') {
       setActiveTab('archive');
     } else {
       setActiveGridModal(target);
     }
+  };
+
+  const handleCloseGridModal = () => {
+    setActiveGridModal(null);
+    setSelectedCategory(null);
   };
 
   const isDark = themeMode === 'Dark';
@@ -101,6 +116,15 @@ function AppContent() {
   const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
+
+  // Dynamic Categories List based on existing letters
+  const categoryList = [
+    { name: 'Goals', icon: '🎯' },
+    { name: 'Personal', icon: '👤' },
+    { name: 'Future', icon: '🚀' },
+    { name: 'Memories', icon: '📸' },
+    { name: 'School', icon: '📚' },
+  ];
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -164,7 +188,7 @@ function AppContent() {
         barStyle={isDark ? 'light-content' : 'dark-content'}
         backgroundColor={bgColor}
       />
-      
+
       <View style={styles.content}>{renderActiveScreen()}</View>
 
       <BottomNavBar
@@ -174,26 +198,35 @@ function AppContent() {
         accentColor={accentColor}
       />
 
-      {/* Grid Quick Action Sub-Screen Modal */}
+      {/* Grid Quick Action Modal */}
       <Modal
         visible={activeGridModal !== null}
         animationType="slide"
-        onRequestClose={() => setActiveGridModal(null)}
+        onRequestClose={handleCloseGridModal}
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
-          {/* Lowered Header with Clear Back Button */}
+          {/* Top Bar Navigation */}
           <View style={styles.modalTopBar}>
             <TouchableOpacity
-              onPress={() => setActiveGridModal(null)}
+              onPress={() => {
+                if (selectedCategory) {
+                  setSelectedCategory(null);
+                } else {
+                  handleCloseGridModal();
+                }
+              }}
               activeOpacity={0.6}
               style={styles.backButtonTouch}
               hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             >
-              <Text style={[styles.backArrow, { color: accentColor }]}>‹ Back</Text>
+              <Text style={[styles.backArrow, { color: accentColor }]}>
+                ‹ {selectedCategory ? 'Categories' : 'Back'}
+              </Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView contentContainerStyle={styles.modalScrollContent}>
+            {/* FAVORITES VIEW */}
             {activeGridModal === 'favorites' && (
               <View>
                 <Text style={[styles.modalTitle, { color: textColor }]}>Favorites</Text>
@@ -209,10 +242,7 @@ function AppContent() {
                       <TouchableOpacity
                         key={l.id}
                         style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}
-                        onPress={() => {
-                          setActiveGridModal(null);
-                          setSelectedLetter(l);
-                        }}
+                        onPress={() => setSelectedLetter(l)}
                       >
                         <Text style={{ fontSize: 18, marginRight: 12 }}>⭐</Text>
                         <View style={{ flex: 1 }}>
@@ -227,29 +257,88 @@ function AppContent() {
               </View>
             )}
 
+            {/* CATEGORIES VIEW */}
             {activeGridModal === 'categories' && (
               <View>
-                <Text style={[styles.modalTitle, { color: textColor }]}>Categories</Text>
-                <Text style={[styles.modalSub, { color: subTextColor }]}>Organize your letters</Text>
-                {[
-                  { name: 'Goals', count: 3 },
-                  { name: 'Memories', count: 1 },
-                  { name: 'School', count: 2 },
-                  { name: 'Personal', count: 3 },
-                ].map((cat, idx) => (
-                  <View key={idx} style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}>
-                    <Text style={{ fontSize: 18, marginRight: 12 }}>🗂️</Text>
-                    <View>
-                      <Text style={[styles.itemTitle, { color: textColor }]}>{cat.name}</Text>
-                      <Text style={[styles.itemSub, { color: subTextColor }]}>
-                        {cat.count} letters
-                      </Text>
-                    </View>
+                {selectedCategory ? (
+                  // FILTERED LETTERS FOR SELECTED CATEGORY
+                  <View>
+                    <Text style={[styles.modalTitle, { color: textColor }]}>
+                      {selectedCategory}
+                    </Text>
+                    <Text style={[styles.modalSub, { color: subTextColor }]}>
+                      Letters in this category
+                    </Text>
+
+                    {letters.filter(
+                      (l) => l.category?.toLowerCase() === selectedCategory.toLowerCase()
+                    ).length === 0 ? (
+                      <View style={[styles.emptyBox, { borderColor }]}>
+                        <Text style={{ color: subTextColor }}>
+                          No letters in "{selectedCategory}" yet.
+                        </Text>
+                      </View>
+                    ) : (
+                      letters
+                        .filter(
+                          (l) => l.category?.toLowerCase() === selectedCategory.toLowerCase()
+                        )
+                        .map((l) => (
+                          <TouchableOpacity
+                            key={l.id}
+                            style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}
+                            onPress={() => setSelectedLetter(l)}
+                          >
+                            <Text style={{ fontSize: 18, marginRight: 12 }}>📜</Text>
+                            <View style={{ flex: 1 }}>
+                              <Text style={[styles.itemTitle, { color: textColor }]}>
+                                {l.title}
+                              </Text>
+                              <Text style={[styles.itemSub, { color: subTextColor }]} numberOfLines={1}>
+                                {l.content}
+                              </Text>
+                            </View>
+                            <Text style={{ color: accentColor, fontWeight: 'bold' }}>Read ›</Text>
+                          </TouchableOpacity>
+                        ))
+                    )}
                   </View>
-                ))}
+                ) : (
+                  // CATEGORIES SELECTION LIST
+                  <View>
+                    <Text style={[styles.modalTitle, { color: textColor }]}>Categories</Text>
+                    <Text style={[styles.modalSub, { color: subTextColor }]}>
+                      Select a category to view letters
+                    </Text>
+                    {categoryList.map((cat, idx) => {
+                      const count = letters.filter(
+                        (l) => l.category?.toLowerCase() === cat.name.toLowerCase()
+                      ).length;
+
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}
+                          activeOpacity={0.7}
+                          onPress={() => setSelectedCategory(cat.name)}
+                        >
+                          <Text style={{ fontSize: 20, marginRight: 12 }}>{cat.icon}</Text>
+                          <View style={{ flex: 1 }}>
+                            <Text style={[styles.itemTitle, { color: textColor }]}>{cat.name}</Text>
+                            <Text style={[styles.itemSub, { color: subTextColor }]}>
+                              {count} {count === 1 ? 'letter' : 'letters'}
+                            </Text>
+                          </View>
+                          <Text style={{ fontSize: 18, color: accentColor }}>›</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                )}
               </View>
             )}
 
+            {/* BADGES VIEW */}
             {activeGridModal === 'achievements' && (
               <View>
                 <Text style={[styles.modalTitle, { color: textColor }]}>Badges</Text>
@@ -330,7 +419,7 @@ const styles = StyleSheet.create({
   modalContainer: { flex: 1 },
   modalTopBar: {
     paddingHorizontal: 20,
-    paddingTop: 28, // Extra top padding moves the back button lower down
+    paddingTop: 28,
     paddingBottom: 12,
   },
   backButtonTouch: {
