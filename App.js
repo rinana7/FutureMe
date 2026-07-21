@@ -94,6 +94,7 @@ function AppContent() {
             onSelectLetter={(letter) => setSelectedLetter(letter)}
             isDark={isDark}
             accentColor={accentColor}
+            onNavigateToWrite={() => setActiveTab('write')}
           />
         );
       case 'write':

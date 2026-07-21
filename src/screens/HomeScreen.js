@@ -3,340 +3,364 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TextInput,
   TouchableOpacity,
+  ScrollView,
+  SafeAreaView,
+  TextInput,
 } from 'react-native';
-import StatusTiles from '../components/StatusTiles';
 
-export default function HomeScreen({ letters = [], setLetters, onSelectLetter }) {
-  const [selectedCategory, setSelectedCategory] = useState('All categories');
+export default function HomeScreen({
+  letters = [],
+  setLetters,
+  onSelectLetter,
+  isDark = false,
+  accentColor = '#D9822B',
+  onNavigateToWrite,
+}) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('All'); // 'All' | 'Unlocked' | 'Scheduled'
 
-  const categories = ['All categories', 'Personal', 'Future', 'School'];
+  // Dynamic Theme Styling
+  const bgColor = isDark ? '#121212' : '#FAF8F5';
+  const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
+  const subTextColor = isDark ? '#AAAAAA' : '#777777';
+  const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
+  const inputBg = isDark ? '#262626' : '#F2EFEA';
 
+  // Stats calculation
+  const totalLetters = letters.length;
+  const unlockedCount = letters.filter((l) => l.isUnlocked || l.type !== 'future').length;
+  const scheduledCount = totalLetters - unlockedCount;
+
+  // Toggle favorite helper
+  const handleToggleFavorite = (id, event) => {
+    event.stopPropagation();
+    setLetters((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, isFavorite: !item.isFavorite } : item))
+    );
+  };
+
+  // Filter letters based on search query & active filter tab
   const filteredLetters = letters.filter((item) => {
-    const matchesCategory =
-      selectedCategory === 'All categories' || item.category === selectedCategory;
+    const isUnlocked = item.isUnlocked || item.type !== 'future';
     const matchesSearch =
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.content?.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+
+    if (activeFilter === 'Unlocked') return matchesSearch && isUnlocked;
+    if (activeFilter === 'Scheduled') return matchesSearch && !isUnlocked;
+    return matchesSearch;
   });
 
-  const favoriteCount = letters.filter((l) => l.isFavorite).length;
-  const draftCount = letters.filter((l) => l.type === 'reminder').length;
-  const archivedCount = letters.filter((l) => l.isArchived).length;
-
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Welcome back</Text>
-        <Text style={styles.title}>Future Letter</Text>
-        <Text style={styles.subtitle}>✨ Write today. Discover tomorrow.</Text>
-      </View>
-
-      {/* Hero Countdown Tile */}
-      <View style={styles.heroCard}>
-        <View style={styles.heroHeader}>
-          <Text style={styles.heroTag}>⏳ NEXT LOCKED LETTER</Text>
-          <View style={styles.futureBadge}>
-            <Text style={styles.futureBadgeText}>Future</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Top Header */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.greeting, { color: subTextColor }]}>Welcome back</Text>
+            <Text style={[styles.headerTitle, { color: textColor }]}>My Letters</Text>
           </View>
-        </View>
-
-        <Text style={styles.heroTitle}>Message to Me in 5 Years</Text>
-
-        <View style={styles.timerRow}>
-          <View style={styles.timeBox}>
-            <Text style={styles.timeNumber}>4</Text>
-            <Text style={styles.timeLabel}>Yrs</Text>
-          </View>
-          <View style={styles.timeBox}>
-            <Text style={styles.timeNumber}>11</Text>
-            <Text style={styles.timeLabel}>Mos</Text>
-          </View>
-          <View style={styles.timeBox}>
-            <Text style={styles.timeNumber}>24</Text>
-            <Text style={styles.timeLabel}>Days</Text>
-          </View>
-          <View style={styles.timeBox}>
-            <Text style={styles.timeNumber}>8</Text>
-            <Text style={styles.timeLabel}>Hrs</Text>
-          </View>
-          <View style={styles.timeBox}>
-            <Text style={styles.timeNumber}>33</Text>
-            <Text style={styles.timeLabel}>Min</Text>
-          </View>
-          <View style={styles.timeBox}>
-            <Text style={styles.timeNumber}>8</Text>
-            <Text style={styles.timeLabel}>Sec</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Status Summary Tiles */}
-      <StatusTiles
-        favoriteCount={favoriteCount}
-        draftCount={draftCount}
-        archivedCount={archivedCount}
-      />
-
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search reminders or letters..."
-          placeholderTextColor="#666"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-      </View>
-
-      {/* Category Pills */}
-      <Text style={styles.sectionLabel}>Categories</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryRow}>
-        {categories.map((cat) => {
-          const isActive = selectedCategory === cat;
-          return (
+          {onNavigateToWrite && (
             <TouchableOpacity
-              key={cat}
-              style={[styles.categoryPill, isActive && styles.categoryPillActive]}
-              onPress={() => setSelectedCategory(cat)}
+              style={[styles.quickWriteBtn, { backgroundColor: accentColor }]}
+              onPress={onNavigateToWrite}
+              activeOpacity={0.8}
             >
-              <Text style={[styles.categoryText, isActive && styles.categoryTextActive]}>
-                {cat === 'All categories' ? '📁 All categories' : cat}
-              </Text>
+              <Text style={styles.quickWriteBtnText}>+ Write</Text>
             </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+          )}
+        </View>
 
-{/* Feed List */}
-      <Text style={styles.sectionTitle}>Your Feed ({filteredLetters.length})</Text>
+        {/* Quick Stats Bar */}
+        <View style={[styles.statsCard, { backgroundColor: cardBg, borderColor }]}>
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: accentColor }]}>{totalLetters}</Text>
+            <Text style={[styles.statLabel, { color: subTextColor }]}>Total</Text>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: textColor }]}>{unlockedCount}</Text>
+            <Text style={[styles.statLabel, { color: subTextColor }]}>Unlocked</Text>
+          </View>
+          <View style={[styles.statDivider, { backgroundColor: borderColor }]} />
+          <View style={styles.statItem}>
+            <Text style={[styles.statValue, { color: subTextColor }]}>{scheduledCount}</Text>
+            <Text style={[styles.statLabel, { color: subTextColor }]}>Scheduled</Text>
+          </View>
+        </View>
 
-      {filteredLetters.map((item) => (
-        <TouchableOpacity
-          key={item.id}
-          style={styles.card}
-          activeOpacity={0.7}
-          onPress={() => onSelectLetter && onSelectLetter(item)}
-        >
-          <View style={styles.cardLeft}>
-            <Text style={styles.cardIcon}>
-              {item.type === 'future' ? '🔒' : '📝'}
+        {/* Search Bar */}
+        <View style={[styles.searchBox, { backgroundColor: inputBg }]}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder="Search letters..."
+            placeholderTextColor={subTextColor}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <Text style={{ color: subTextColor, fontSize: 16 }}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Pills */}
+        <View style={styles.filterContainer}>
+          {['All', 'Unlocked', 'Scheduled'].map((tab) => {
+            const isActive = activeFilter === tab;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[
+                  styles.filterPill,
+                  { backgroundColor: cardBg, borderColor },
+                  isActive && { backgroundColor: accentColor, borderColor: accentColor },
+                ]}
+                onPress={() => setActiveFilter(tab)}
+              >
+                <Text
+                  style={[
+                    styles.filterPillText,
+                    { color: textColor },
+                    isActive && { color: '#FFFFFF', fontWeight: 'bold' },
+                  ]}
+                >
+                  {tab}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Letters List */}
+        {filteredLetters.length === 0 ? (
+          <View style={[styles.emptyCard, { borderColor }]}>
+            <Text style={{ fontSize: 32, marginBottom: 8 }}>📜</Text>
+            <Text style={[styles.emptyTitle, { color: textColor }]}>No letters found</Text>
+            <Text style={[styles.emptySub, { color: subTextColor }]}>
+              {searchQuery ? 'Try another search term' : 'Tap "+ Write" above to create your first letter!'}
             </Text>
-            <View style={styles.cardTextContainer}>
-              <View style={styles.cardTitleRow}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                {item.isFavorite && <Text style={styles.starIcon}>⭐</Text>}
-              </View>
-              <Text style={styles.cardSubtitle}>
-                {item.type === 'future' ? 'Time Capsule • Tap to inspect' : 'Reminder • Tap to view'}
-              </Text>
-            </View>
           </View>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.category || 'Personal'}</Text>
-          </View>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+        ) : (
+          filteredLetters.map((item) => {
+            const isUnlocked = item.isUnlocked || item.type !== 'future';
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.letterCard, { backgroundColor: cardBg, borderColor }]}
+                activeOpacity={0.7}
+                onPress={() => onSelectLetter && onSelectLetter(item)}
+              >
+                <View style={styles.cardTopRow}>
+                  <View style={styles.badgeRow}>
+                    <Text style={{ fontSize: 16, marginRight: 6 }}>{isUnlocked ? '📜' : '🔒'}</Text>
+                    <View
+                      style={[
+                        styles.categoryBadge,
+                        { backgroundColor: isDark ? '#2A2A2A' : '#F2EFEA' },
+                      ]}
+                    >
+                      <Text style={[styles.categoryText, { color: accentColor }]}>
+                        {item.category || 'Personal'}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    onPress={(e) => handleToggleFavorite(item.id, e)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={{ fontSize: 18 }}>{item.isFavorite ? '⭐' : '☆'}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={[styles.cardTitle, { color: textColor }]}>{item.title}</Text>
+                <Text style={[styles.cardContent, { color: subTextColor }]} numberOfLines={2}>
+                  {item.content}
+                </Text>
+
+                <View style={[styles.cardFooter, { borderTopColor: borderColor }]}>
+                  <Text style={[styles.dateText, { color: subTextColor }]}>
+                    {item.unlockDate
+                      ? `Opens: ${new Date(item.unlockDate).toLocaleDateString()}`
+                      : 'Remind Me'}
+                  </Text>
+                  <Text style={[styles.viewBtn, { color: accentColor }]}>
+                    {isUnlocked ? 'Read Letter ›' : 'Locked ›'}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
   },
-  contentContainer: {
-    paddingHorizontal: 16,
+  scrollContent: {
+    paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 32,
+    paddingBottom: 60,
   },
-  header: {
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
   greeting: {
-    fontSize: 14,
-    color: '#888888',
+    fontSize: 13,
+    fontWeight: '500',
   },
-  title: {
+  headerTitle: {
     fontSize: 28,
+    fontFamily: 'Georgia',
     fontWeight: 'bold',
-    color: '#ffffff',
-    marginTop: 2,
   },
-  subtitle: {
-    fontSize: 14,
-    color: '#ff9f43',
-    marginTop: 4,
+  quickWriteBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  heroCard: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+  quickWriteBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
-  heroHeader: {
+  statsCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    borderRadius: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+    justifyContent: 'space-around',
     alignItems: 'center',
   },
-  heroTag: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#bb86fc',
-  },
-  futureBadge: {
-    backgroundColor: '#382247',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  futureBadgeText: {
-    fontSize: 12,
-    color: '#bb86fc',
-    fontWeight: '600',
-  },
-  heroTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginVertical: 12,
-  },
-  timerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  timeBox: {
-    backgroundColor: '#2a2a2a',
-    borderRadius: 8,
-    paddingVertical: 8,
+  statItem: {
     alignItems: 'center',
     flex: 1,
-    marginHorizontal: 2,
   },
-  timeNumber: {
-    fontSize: 16,
+  statValue: {
+    fontSize: 18,
     fontWeight: 'bold',
-    color: '#ffffff',
   },
-  timeLabel: {
-    fontSize: 10,
-    color: '#888888',
+  statLabel: {
+    fontSize: 11,
     marginTop: 2,
   },
-  searchBar: {
+  statDivider: {
+    width: 1,
+    height: '70%',
+  },
+  searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 12,
-    height: 44,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: '#2a2a2a',
+    paddingVertical: 10,
+    marginBottom: 14,
   },
   searchIcon: {
+    fontSize: 14,
     marginRight: 8,
   },
   searchInput: {
     flex: 1,
-    color: '#ffffff',
     fontSize: 14,
+    padding: 0,
   },
-  sectionLabel: {
-    fontSize: 13,
-    color: '#888888',
-    marginBottom: 8,
-  },
-  categoryRow: {
+  filterContainer: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  categoryPill: {
-    backgroundColor: '#1e1e1e',
-    paddingHorizontal: 14,
+  filterPill: {
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginRight: 8,
     borderWidth: 1,
-    borderColor: '#2a2a2a',
+    marginRight: 8,
   },
-  categoryPillActive: {
-    backgroundColor: '#ff9f43',
-    borderColor: '#ff9f43',
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  letterCard: {
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 14,
+  },
+  cardTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   categoryText: {
-    fontSize: 13,
-    color: '#888888',
-  },
-  categoryTextActive: {
-    color: '#ffffff',
+    fontSize: 10,
     fontWeight: 'bold',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    marginBottom: 12,
-  },
-  card: {
-    backgroundColor: '#1e1e1e',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderLeftWidth: 4,
-    borderLeftColor: '#bb86fc',
-  },
-  cardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  cardIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  cardTextContainer: {
-    flex: 1,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    textTransform: 'uppercase',
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 18,
+    fontFamily: 'Georgia',
     fontWeight: 'bold',
-    color: '#ffffff',
-    marginRight: 6,
+    marginBottom: 6,
   },
-  starIcon: {
+  cardContent: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+  },
+  dateText: {
+    fontSize: 11,
+  },
+  viewBtn: {
     fontSize: 12,
+    fontWeight: 'bold',
   },
-  cardSubtitle: {
+  emptyCard: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 18,
+    padding: 30,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  emptySub: {
     fontSize: 12,
-    color: '#888888',
-    marginTop: 2,
-  },
-  badge: {
-    backgroundColor: '#382247',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  badgeText: {
-    fontSize: 12,
-    color: '#bb86fc',
-    fontWeight: '600',
+    textAlign: 'center',
   },
 });
