@@ -22,3 +22,11 @@ export const loadLettersFromStorage = async () => {
     return null;
   }
 };
+
+export const clearLettersFromStorage = async () => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEY);
+  } catch (e) {
+    console.error('Failed to clear letters:', e);
+  }
+};
