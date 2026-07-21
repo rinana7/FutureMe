@@ -54,6 +54,10 @@ export default function SettingsScreen({
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
 
+  const handleCloseModal = () => {
+    setActiveModal(null);
+  };
+
   const renderModalContent = () => {
     switch (activeModal) {
       case 'themes':
@@ -194,9 +198,9 @@ export default function SettingsScreen({
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-      {/* Top Header Bar */}
+      {/* Top Header Bar for Main Settings Screen */}
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={onBack} style={styles.backButtonTouch}>
+        <TouchableOpacity onPress={onBack} activeOpacity={0.7} style={styles.backButtonTouch}>
           <Text style={[styles.backArrow, { color: textColor }]}>‹ Back</Text>
         </TouchableOpacity>
       </View>
@@ -242,7 +246,7 @@ export default function SettingsScreen({
           </View>
         </View>
 
-        {/* LIBRARY LIST (RESTORED) */}
+        {/* LIBRARY LIST */}
         <Text style={styles.sectionHeader}>LIBRARY</Text>
         <View style={[styles.cardBox, { backgroundColor: cardBg, borderColor, paddingVertical: 4 }]}>
           <TouchableOpacity style={styles.libraryRow} onPress={() => setActiveModal('themes')}>
@@ -294,12 +298,19 @@ export default function SettingsScreen({
       </ScrollView>
 
       {/* Sub-Screen Modal View */}
-      <Modal visible={activeModal !== null} animationType="slide" presentationStyle="pageSheet">
+      <Modal
+        visible={activeModal !== null}
+        animationType="slide"
+        onRequestClose={handleCloseModal}
+      >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
-          <View style={styles.topBar}>
+          {/* Header with increased top padding for sub-modal back button */}
+          <View style={styles.modalTopBar}>
             <TouchableOpacity
-              onPress={() => setActiveModal(null)}
+              onPress={handleCloseModal}
+              activeOpacity={0.7}
               style={styles.backButtonTouch}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
               <Text style={[styles.backArrow, { color: textColor }]}>‹ Back</Text>
             </TouchableOpacity>
@@ -318,11 +329,23 @@ const styles = StyleSheet.create({
   modalContainer: { flex: 1 },
   topBar: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 24,
     paddingBottom: 8,
   },
-  backButtonTouch: { paddingVertical: 6 },
-  backArrow: { fontSize: 18, fontWeight: 'bold' },
+  modalTopBar: {
+    paddingHorizontal: 20,
+    paddingTop: 28, // Pushes back button down below the status bar/notch
+    paddingBottom: 8,
+  },
+  backButtonTouch: {
+    paddingVertical: 10,
+    paddingRight: 20,
+    alignSelf: 'flex-start',
+  },
+  backArrow: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
