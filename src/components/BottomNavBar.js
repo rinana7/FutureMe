@@ -63,6 +63,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#2a2a2a',
     justifyContent: 'space-around',
+    marginBottom: 20,
+    paddingHorizontal: 10,
   },
   navItem: {
     alignItems: 'center',
