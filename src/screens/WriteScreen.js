@@ -8,8 +8,10 @@ import {
   ScrollView,
   Alert,
   Platform,
+  Image,
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function WriteScreen({
   onSave,
@@ -24,6 +26,7 @@ export default function WriteScreen({
   const [selectedDuration, setSelectedDuration] = useState('Tomorrow'); // 'Tomorrow' | 'In 2 days' | 'In 3 days' | '1 week' | 'custom'
   const [customDate, setCustomDate] = useState(new Date('2026-07-21'));
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const categories = [
     'Goals',
@@ -50,6 +53,31 @@ export default function WriteScreen({
       onClose();
     } else if (onNavigate) {
       onNavigate('home');
+    }
+  };
+
+  const handleAttachPhoto = async () => {
+    // Request permission to access media library
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert(
+        'Permission Denied',
+        'Permission to access photo library is required!'
+      );
+      return;
+    }
+
+    // Launch native image picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setSelectedImage(result.assets[0].uri);
     }
   };
 
@@ -86,6 +114,7 @@ export default function WriteScreen({
       id: Date.now().toString(),
       title: title.trim(),
       content: content.trim(),
+      imageUri: selectedImage,
       type: 'future',
       category: category,
       isFavorite: false,
@@ -154,15 +183,30 @@ export default function WriteScreen({
           onChangeText={setContent}
         />
 
-        {/* Attach Photo Button */}
-        <TouchableOpacity
-          style={[styles.photoButton, { borderColor }]}
-          activeOpacity={0.7}
-          onPress={() => Alert.alert('Attach Photo', 'Photo attachment option selected.')}
-        >
-          <Text style={styles.photoIcon}>📷</Text>
-          <Text style={[styles.photoText, { color: subTextColor }]}>Attach a photo</Text>
-        </TouchableOpacity>
+        {/* Attach Photo Button / Preview */}
+        {selectedImage ? (
+          <View style={styles.imagePreviewWrapper}>
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} />
+            <TouchableOpacity
+              style={styles.removeImageBtn}
+              onPress={() => setSelectedImage(null)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.removeImageText}>✕ Remove Photo</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[styles.photoButton, { borderColor }]}
+            activeOpacity={0.7}
+            onPress={handleAttachPhoto}
+          >
+            <Text style={styles.photoIcon}>📷</Text>
+            <Text style={[styles.photoText, { color: subTextColor }]}>
+              Attach a photo
+            </Text>
+          </TouchableOpacity>
+        )}
 
         {/* When Should It Arrive Section */}
         <Text style={[styles.sectionTitle, { color: textColor }]}>
@@ -177,7 +221,10 @@ export default function WriteScreen({
                 key={opt.id}
                 style={[
                   styles.durationCard,
-                  { backgroundColor: isSelected ? accentColor : cardBg, borderColor },
+                  {
+                    backgroundColor: isSelected ? accentColor : cardBg,
+                    borderColor,
+                  },
                 ]}
                 onPress={() => setSelectedDuration(opt.id)}
                 activeOpacity={0.8}
@@ -201,7 +248,8 @@ export default function WriteScreen({
             styles.customDateCard,
             {
               backgroundColor: cardBg,
-              borderColor: selectedDuration === 'custom' ? accentColor : borderColor,
+              borderColor:
+                selectedDuration === 'custom' ? accentColor : borderColor,
             },
           ]}
           onPress={() => setShowDatePicker(true)}
@@ -353,6 +401,27 @@ const styles = StyleSheet.create({
   photoText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  imagePreviewWrapper: {
+    marginBottom: 28,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+  },
+  removeImageBtn: {
+    marginTop: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#FF3B30',
+    borderRadius: 12,
+  },
+  removeImageText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   sectionTitle: {
     fontSize: 15,
