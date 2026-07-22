@@ -29,25 +29,52 @@ export default function HomeScreen({
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
   const inputBg = isDark ? '#262626' : '#F2EFEA';
 
-  // Counts for quick action grid buttons
+  // Quick Action Grid Counts
   const favoritesCount = letters.filter((l) => l.isFavorite).length;
   const archiveCount = letters.filter((l) => l.isArchived).length;
 
   // Find next upcoming letter for the hero countdown
-  const scheduledLetters = letters.filter((l) => !l.isUnlocked && l.unlockDate);
+  const scheduledLetters = letters.filter(
+    (l) => !l.isUnlocked && new Date(l.unlockDate) > new Date()
+  );
   const nextLetter = scheduledLetters.length > 0 ? scheduledLetters[0] : null;
 
-  // Toggle favorite helper
+  // Toggle Favorite
   const handleToggleFavorite = (id, event) => {
-    event.stopPropagation();
+    if (event && event.stopPropagation) event.stopPropagation();
     setLetters((prev) =>
       prev.map((item) => (item.id === id ? { ...item, isFavorite: !item.isFavorite } : item))
     );
   };
 
-  // Filter letters based on search query & active filter tab
+  // Helper: Format Date String
+  const formatDate = (isoString) => {
+    if (!isoString) return '';
+    return new Date(isoString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  // Helper: Get Time Remaining String (e.g. "5d left", "1mo 3d left")
+  const getRemainingTimeText = (unlockDateStr) => {
+    const diffMs = new Date(unlockDateStr) - new Date();
+    if (diffMs <= 0) return 'Arrived';
+
+    const daysTotal = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const months = Math.floor(daysTotal / 30);
+    const days = daysTotal % 30;
+
+    if (months > 0) {
+      return `${months}mo ${days}d left`;
+    }
+    return `${daysTotal}d left`;
+  };
+
+  // Filter letters based on search and active filter tab
   const filteredLetters = letters.filter((item) => {
-    const isUnlocked = item.isUnlocked || item.type !== 'future';
+    const isUnlocked = item.isUnlocked || new Date(item.unlockDate) <= new Date();
     const matchesSearch =
       item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.content?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -56,6 +83,118 @@ export default function HomeScreen({
     if (activeFilter === 'Scheduled') return matchesSearch && !isUnlocked;
     return matchesSearch;
   });
+
+  // Split into Sealed and Delivered lists for categorized display
+  const sealedList = filteredLetters.filter(
+    (l) => !l.isUnlocked && new Date(l.unlockDate) > new Date()
+  );
+  const deliveredList = filteredLetters.filter(
+    (l) => l.isUnlocked || new Date(l.unlockDate) <= new Date()
+  );
+
+  // Render individual Letter Card based on your design mockup
+  const renderLetterCard = (letter) => {
+    const isSealed = !letter.isUnlocked && new Date(letter.unlockDate) > new Date();
+
+    return (
+      <TouchableOpacity
+        key={letter.id}
+        style={[styles.letterCard, { backgroundColor: cardBg, borderColor }]}
+        activeOpacity={0.8}
+        onPress={() => onSelectLetter && onSelectLetter(letter)}
+      >
+        {/* Card Header */}
+        <View style={styles.cardHeaderRow}>
+          <View style={styles.cardHeaderLeft}>
+            <View
+              style={[
+                styles.iconCircle,
+                isSealed
+                  ? { backgroundColor: isDark ? '#33281E' : '#F9EEDC' }
+                  : { backgroundColor: isDark ? '#2A2A2A' : '#F0EDED' },
+              ]}
+            >
+              <Text style={{ fontSize: 18 }}>{isSealed ? '🔒' : '✉️'}</Text>
+            </View>
+
+            <View style={styles.titleContainer}>
+              <Text style={[styles.cardTitle, { color: textColor }]} numberOfLines={1}>
+                {letter.title}
+              </Text>
+              <Text style={[styles.cardSubDate, { color: subTextColor }]}>
+                {isSealed
+                  ? `Delivers ${formatDate(letter.unlockDate)}`
+                  : `Opened ${formatDate(letter.openedAt || letter.unlockDate)}`}
+              </Text>
+            </View>
+          </View>
+
+          {/* Star Favorite Toggle */}
+          <TouchableOpacity
+            onPress={(e) => handleToggleFavorite(letter.id, e)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={{ fontSize: 20, color: accentColor }}>
+              {letter.isFavorite ? '⭐' : '☆'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Card Text Preview */}
+        {isSealed ? (
+          <Text
+            style={[
+              styles.blurredContent,
+              { color: isDark ? '#555555' : '#BBBBBB' },
+            ]}
+            numberOfLines={2}
+          >
+            This letter stays sealed until its delivery date. A message from your past self awaits.
+          </Text>
+        ) : (
+          <Text style={[styles.clearContent, { color: subTextColor }]} numberOfLines={2}>
+            {letter.content}
+          </Text>
+        )}
+
+        {/* Card Footer Meta Row */}
+        <View style={styles.cardFooterRow}>
+          <View style={styles.tagWrap}>
+            {Array.isArray(letter.categories) && letter.categories.length > 0 ? (
+              letter.categories.map((cat, idx) => (
+                <View
+                  key={idx}
+                  style={[styles.tagPill, { backgroundColor: isDark ? '#2A2A2A' : '#F0ECE6' }]}
+                >
+                  <Text style={[styles.tagText, { color: isDark ? '#CCCCCC' : '#555555' }]}>
+                    {cat}
+                  </Text>
+                </View>
+              ))
+            ) : (
+              <View
+                style={[styles.tagPill, { backgroundColor: isDark ? '#2A2A2A' : '#F0ECE6' }]}
+              >
+                <Text style={[styles.tagText, { color: isDark ? '#CCCCCC' : '#555555' }]}>
+                  {letter.category || 'Personal'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {isSealed ? (
+            <Text style={[styles.timerLabel, { color: accentColor }]}>
+              {getRemainingTimeText(letter.unlockDate)}
+            </Text>
+          ) : (
+            <Text style={[styles.statusLabel, { color: subTextColor }]}>
+              {letter.openedEarly ? 'Opened early' : 'Delivered'}
+            </Text>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
@@ -143,7 +282,7 @@ export default function HomeScreen({
           })}
         </View>
 
-        {/* Quick Action Grid Buttons (Favorites, Categories, Badges, Archive) */}
+        {/* Quick Action Grid */}
         <View style={styles.gridContainer}>
           <TouchableOpacity
             style={[styles.gridCard, { backgroundColor: cardBg, borderColor }]}
@@ -202,12 +341,7 @@ export default function HomeScreen({
           <Text style={styles.writeMainBtnText}>✏️ Write a new letter</Text>
         </TouchableOpacity>
 
-        {/* Letters Section Title */}
-        <View style={styles.sectionHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: subTextColor }]}>SEALED LETTERS</Text>
-        </View>
-
-        {/* Letters List */}
+        {/* LETTERS FEED */}
         {filteredLetters.length === 0 ? (
           <View style={[styles.emptyCard, { borderColor }]}>
             <Text style={{ fontSize: 32, marginBottom: 8 }}>📜</Text>
@@ -217,57 +351,35 @@ export default function HomeScreen({
             </Text>
           </View>
         ) : (
-          filteredLetters.map((item) => {
-            const isUnlocked = item.isUnlocked || item.type !== 'future';
-
-            return (
-              <TouchableOpacity
-                key={item.id}
-                style={[styles.letterCard, { backgroundColor: cardBg, borderColor }]}
-                activeOpacity={0.7}
-                onPress={() => onSelectLetter && onSelectLetter(item)}
-              >
-                <View style={styles.cardTopRow}>
-                  <View style={styles.badgeRow}>
-                    <Text style={{ fontSize: 16, marginRight: 6 }}>{isUnlocked ? '📜' : '🔒'}</Text>
-                    <View
-                      style={[
-                        styles.categoryBadge,
-                        { backgroundColor: isDark ? '#2A2A2A' : '#F2EFEA' },
-                      ]}
-                    >
-                      <Text style={[styles.categoryText, { color: accentColor }]}>
-                        {item.category || 'Personal'}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <TouchableOpacity
-                    onPress={(e) => handleToggleFavorite(item.id, e)}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <Text style={{ fontSize: 18 }}>{item.isFavorite ? '⭐' : '☆'}</Text>
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={[styles.cardTitle, { color: textColor }]}>{item.title}</Text>
-                <Text style={[styles.cardContent, { color: subTextColor }]} numberOfLines={2}>
-                  {item.content}
-                </Text>
-
-                <View style={[styles.cardFooter, { borderTopColor: borderColor }]}>
-                  <Text style={[styles.dateText, { color: subTextColor }]}>
-                    {item.unlockDate
-                      ? `Opens: ${new Date(item.unlockDate).toLocaleDateString()}`
-                      : 'Remind Me'}
-                  </Text>
-                  <Text style={[styles.viewBtn, { color: accentColor }]}>
-                    {isUnlocked ? 'Read Letter ›' : 'Locked ›'}
+          <View>
+            {/* SEALED LETTERS SECTION */}
+            {sealedList.length > 0 && (
+              <View style={styles.sectionBlock}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: subTextColor }]}>SEALED LETTERS</Text>
+                  <Text style={[styles.sectionSubCount, { color: accentColor }]}>
+                    {sealedList.length}
                   </Text>
                 </View>
-              </TouchableOpacity>
-            );
-          })
+                {sealedList.map((letter) => renderLetterCard(letter))}
+              </View>
+            )}
+
+            {/* RECENTLY DELIVERED SECTION */}
+            {deliveredList.length > 0 && (
+              <View style={styles.sectionBlock}>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={[styles.sectionTitle, { color: subTextColor }]}>
+                    RECENTLY DELIVERED
+                  </Text>
+                  <Text style={[styles.sectionSubCount, { color: subTextColor }]}>
+                    {deliveredList.length}
+                  </Text>
+                </View>
+                {deliveredList.map((letter) => renderLetterCard(letter))}
+              </View>
+            )}
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -433,68 +545,111 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: 'bold',
   },
+
+  /* Letter Section Block */
+  sectionBlock: {
+    marginBottom: 10,
+  },
   sectionHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1,
   },
-  letterCard: {
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    marginBottom: 14,
+  sectionSubCount: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
-  cardTopRow: {
+
+  /* Custom Mockup Letter Cards */
+  letterCard: {
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 10,
   },
-  badgeRow: {
+  cardHeaderLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    paddingRight: 8,
   },
-  categoryBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+  iconCircle: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  categoryText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
+  titleContainer: {
+    flex: 1,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: 'Georgia',
     fontWeight: 'bold',
-    marginBottom: 6,
   },
-  cardContent: {
+  cardSubDate: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  blurredContent: {
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: 12,
+    marginBottom: 14,
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 6,
   },
-  cardFooter: {
+  clearContent: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  cardFooterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 10,
-    borderTopWidth: 1,
   },
-  dateText: {
+  tagWrap: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  tagPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  tagText: {
     fontSize: 11,
+    fontWeight: '500',
   },
-  viewBtn: {
+  timerLabel: {
     fontSize: 12,
     fontWeight: 'bold',
   },
+  statusLabel: {
+    fontSize: 12,
+  },
+
+  /* Empty State Card */
   emptyCard: {
     borderWidth: 1,
     borderStyle: 'dashed',

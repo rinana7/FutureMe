@@ -107,6 +107,13 @@ function AppContent() {
     );
   };
 
+  const handleOpenEarly = (letterId) => {
+  setLetters((prev) =>
+    prev.map((l) => (l.id === letterId ? { ...l, isUnlocked: true } : l))
+  );
+  setSelectedLetter((prev) => (prev ? { ...prev, isUnlocked: true } : null));
+};
+
   const handleDeleteLetter = (letterId) => {
     setLetters((prev) => prev.filter((l) => l.id !== letterId));
     setSelectedLetter(null);
@@ -401,13 +408,13 @@ function AppContent() {
         </SafeAreaView>
       </Modal>
 
-      {/* Letter Details View Modal */}
       <LetterDetailModal
         letter={selectedLetter}
         onClose={() => setSelectedLetter(null)}
         onToggleFavorite={handleToggleFavorite}
         onDeleteLetter={handleDeleteLetter}
         onEditLetter={handleEditLetter}
+        onOpenEarly={handleOpenEarly}
         isDark={isDark}
         accentColor={accentColor}
       />

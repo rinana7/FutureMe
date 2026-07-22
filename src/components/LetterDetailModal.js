@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
+  Platform,
+  StatusBar,
 } from 'react-native';
 
 export default function LetterDetailModal({
@@ -15,12 +17,15 @@ export default function LetterDetailModal({
   onToggleFavorite,
   onDeleteLetter,
   onEditLetter,
-  isDark,
+  onOpenEarly,
+  isDark = false,
   accentColor = '#D9822B',
 }) {
+  const [showOpenEarlyModal, setShowOpenEarlyModal] = useState(false);
+
   if (!letter) return null;
 
-  const isLocked = new Date(letter.unlockDate) > new Date();
+  const isLocked = !letter.isUnlocked && new Date(letter.unlockDate) > new Date();
 
   const getTimeRemaining = (targetIso) => {
     const diff = new Date(targetIso) - new Date();
@@ -58,6 +63,13 @@ export default function LetterDetailModal({
     if (onEditLetter) onEditLetter(letter);
   };
 
+  const confirmOpenEarly = () => {
+    setShowOpenEarlyModal(false);
+    if (onOpenEarly) {
+      onOpenEarly(letter.id);
+    }
+  };
+
   const bgColor = isDark ? '#121212' : '#FAF8F5';
   const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
@@ -66,16 +78,13 @@ export default function LetterDetailModal({
   return (
     <Modal visible={!!letter} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-        {/* Navigation Header */}
+        {/* Navigation Header with added top padding */}
         <View style={styles.header}>
-          {/* Back Button */}
           <TouchableOpacity onPress={onClose} style={styles.iconBtn} activeOpacity={0.6}>
             <Text style={[styles.backArrow, { color: textColor }]}>‹</Text>
           </TouchableOpacity>
 
-          {/* Action Buttons */}
           <View style={styles.headerRight}>
-            {/* Star / Favorite Button */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={() => onToggleFavorite && onToggleFavorite(letter.id)}
@@ -84,7 +93,6 @@ export default function LetterDetailModal({
               <Text style={{ fontSize: 22 }}>{letter.isFavorite ? '⭐' : '☆'}</Text>
             </TouchableOpacity>
 
-            {/* Edit Button */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={handleEdit}
@@ -93,7 +101,6 @@ export default function LetterDetailModal({
               <Text style={{ fontSize: 18 }}>✏️</Text>
             </TouchableOpacity>
 
-            {/* Delete Button */}
             <TouchableOpacity
               style={styles.iconBtn}
               onPress={handleDelete}
@@ -106,7 +113,7 @@ export default function LetterDetailModal({
 
         <View style={styles.content}>
           {isLocked ? (
-            /* LOCKED VIEW */
+            /* LOCKED LETTER VIEW */
             <View style={styles.lockedContainer}>
               <View style={styles.lockBadgeIcon}>
                 <Text style={{ fontSize: 36 }}>🔒</Text>
@@ -115,9 +122,13 @@ export default function LetterDetailModal({
               <Text style={[styles.lockedTitle, { color: textColor }]}>
                 Sealed for your future self
               </Text>
-              <Text style={[styles.lockedSubtitle, { color: subTextColor }]}>
-                This letter stays locked until it arrives. The words inside are waiting patiently for you.
-              </Text>
+
+              {/* Blurred Text Preview */}
+              <View style={styles.blurTextContainer}>
+                <Text style={[styles.blurredText, { color: isDark ? '#666666' : '#BBBBBB' }]}>
+                  {letter.content || 'This letter stays locked until it arrives. The words inside are waiting patiently for you.'}
+                </Text>
+              </View>
 
               <View style={styles.timerPill}>
                 <Text style={{ fontSize: 14 }}>⏰</Text>
@@ -128,11 +139,11 @@ export default function LetterDetailModal({
                 Delivers {formattedDeliveryDate}
               </Text>
 
+              {/* Open Early Button Trigger */}
               <TouchableOpacity
                 style={styles.openEarlyBtn}
-                onPress={() =>
-                  Alert.alert('Open Early', 'This feature is currently locked until delivery date!')
-                }
+                onPress={() => setShowOpenEarlyModal(true)}
+                activeOpacity={0.7}
               >
                 <Text style={styles.openEarlyText}>Open early</Text>
               </TouchableOpacity>
@@ -148,7 +159,7 @@ export default function LetterDetailModal({
               </Text>
             </View>
           ) : (
-            /* UNLOCKED VIEW */
+            /* UNLOCKED LETTER VIEW */
             <View style={styles.unlockedContainer}>
               <Text style={{ fontSize: 12, fontWeight: 'bold', color: accentColor, marginBottom: 8 }}>
                 📬 DELIVERED
@@ -169,19 +180,64 @@ export default function LetterDetailModal({
             </View>
           )}
         </View>
+
+        {/* Custom Modal Popup for Open Early */}
+        <Modal
+          visible={showOpenEarlyModal}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setShowOpenEarlyModal(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalCard, { backgroundColor: cardBg }]}>
+              <View style={styles.popupLockIcon}>
+                <Text style={{ fontSize: 24 }}>🔒</Text>
+              </View>
+
+              <Text style={[styles.popupTitle, { color: textColor }]}>
+                Open this letter early?
+              </Text>
+              <Text style={[styles.popupSubtitle, { color: subTextColor }]}>
+                This letter was meant for your future self. Opening it early cannot be undone.
+              </Text>
+
+              <View style={styles.popupBtnRow}>
+                <TouchableOpacity
+                  style={[styles.popupBtn, styles.cancelBtn]}
+                  onPress={() => setShowOpenEarlyModal(false)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.popupBtn, styles.confirmBtn]}
+                  onPress={confirmOpenEarly}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.confirmBtnText}>Open it now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1, 
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 10,
+    /* Added top padding to push top controls below status bar / notch */
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 16 : 24,
+    paddingBottom: 10,
   },
   headerRight: { flexDirection: 'row', gap: 12 },
   iconBtn: { padding: 8 },
@@ -195,10 +251,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#F7EEDD',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  lockedTitle: { fontSize: 24, fontFamily: 'Georgia', fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
-  lockedSubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  lockedTitle: { fontSize: 24, fontFamily: 'Georgia', fontWeight: 'bold', textAlign: 'center', marginBottom: 12 },
+  blurTextContainer: { marginVertical: 12, paddingHorizontal: 10 },
+  blurredText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.7)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
+  },
   timerPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -208,6 +272,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
     marginBottom: 8,
+    marginTop: 12,
   },
   timerText: { fontSize: 14, fontWeight: 'bold', color: '#B36B00' },
   deliversText: { fontSize: 13, marginBottom: 20 },
@@ -217,7 +282,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 10,
     borderRadius: 20,
-    marginBottom: 30,
+    marginBottom: 24,
   },
   openEarlyText: { fontSize: 14, color: '#555555', fontWeight: '500' },
   tagWrap: { flexDirection: 'row', gap: 8, marginBottom: 12 },
@@ -228,4 +293,76 @@ const styles = StyleSheet.create({
   letterTitle: { fontSize: 28, fontFamily: 'Georgia', fontWeight: 'bold', marginBottom: 20 },
   letterCard: { padding: 20, borderRadius: 18, marginBottom: 20 },
   letterBody: { fontSize: 16, lineHeight: 26 },
+
+  /* Popup Styles */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: '100%',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  popupLockIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#F7EEDD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  popupTitle: {
+    fontSize: 20,
+    fontFamily: 'Georgia',
+    fontWeight: 'bold',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  popupSubtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 24,
+  },
+  popupBtnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  popupBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelBtn: {
+    borderWidth: 1,
+    borderColor: '#E2D8CD',
+    backgroundColor: 'transparent',
+  },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  confirmBtn: {
+    backgroundColor: '#D9383A',
+  },
+  confirmBtnText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
 });
