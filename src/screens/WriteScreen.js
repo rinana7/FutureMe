@@ -11,7 +11,13 @@ import {
 } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
-export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' }) {
+export default function WriteScreen({
+  onSave,
+  onClose,
+  onNavigate,
+  isDark,
+  accentColor = '#D9822B',
+}) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('School');
@@ -37,6 +43,15 @@ export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' })
     { id: 'In 3 days', label: 'In 3 days', days: 3 },
     { id: '1 week', label: '1 week', days: 7 },
   ];
+
+  // Handler to close screen and switch to Home
+  const handleClose = () => {
+    if (onClose) {
+      onClose();
+    } else if (onNavigate) {
+      onNavigate('home');
+    }
+  };
 
   const handleDateChange = (event, selectedDate) => {
     setShowDatePicker(Platform.OS === 'ios');
@@ -79,7 +94,9 @@ export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' })
       unlockDate: targetDate.toISOString(),
     };
 
-    onSave(newLetter);
+    if (onSave) {
+      onSave(newLetter);
+    }
   };
 
   // Light/Dark Theme colors matching design
@@ -94,7 +111,11 @@ export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' })
     <View style={[styles.container, { backgroundColor: bgColor }]}>
       {/* Top Header Row */}
       <View style={styles.topHeader}>
-        <TouchableOpacity style={styles.closeBtn} activeOpacity={0.6}>
+        <TouchableOpacity
+          style={styles.closeBtn}
+          activeOpacity={0.6}
+          onPress={handleClose}
+        >
           <Text style={[styles.closeBtnText, { color: textColor }]}>✕</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: textColor }]}>New letter</Text>
@@ -107,7 +128,10 @@ export default function WriteScreen({ onSave, isDark, accentColor = '#D9822B' })
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Title Input */}
         <TextInput
           style={[styles.titleInput, { color: textColor }]}

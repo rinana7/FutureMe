@@ -144,6 +144,7 @@ function AppContent() {
         return (
           <WriteScreen
             onSave={handleAddLetter}
+            onNavigate={(tab) => setActiveTab(tab)}
             isDark={isDark}
             accentColor={accentColor}
           />
