@@ -1,4 +1,3 @@
-// src/components/LetterDetailModal.js
 import React from 'react';
 import {
   Modal,
@@ -7,20 +6,22 @@ import {
   StyleSheet,
   TouchableOpacity,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 
 export default function LetterDetailModal({
   letter,
   onClose,
+  onToggleFavorite,
+  onDeleteLetter,
+  onEditLetter,
   isDark,
   accentColor = '#D9822B',
 }) {
   if (!letter) return null;
 
-  // Determine if letter is currently locked
   const isLocked = new Date(letter.unlockDate) > new Date();
 
-  // Calculate remaining time display
   const getTimeRemaining = (targetIso) => {
     const diff = new Date(targetIso) - new Date();
     if (diff <= 0) return '0d 0h left';
@@ -34,27 +35,70 @@ export default function LetterDetailModal({
     { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }
   );
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Letter',
+      'Are you sure you want to delete this letter?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            if (onDeleteLetter) onDeleteLetter(letter.id);
+            onClose();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleEdit = () => {
+    onClose();
+    if (onEditLetter) onEditLetter(letter);
+  };
+
   const bgColor = isDark ? '#121212' : '#FAF8F5';
   const textColor = isDark ? '#FFFFFF' : '#2B2B2B';
   const cardBg = isDark ? '#1E1E1E' : '#FFFFFF';
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
 
   return (
-    <Modal visible={!!letter} animationType="slide" presentationStyle="pageSheet">
+    <Modal visible={!!letter} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={[styles.container, { backgroundColor: bgColor }]}>
-        {/* Top Header */}
+        {/* Navigation Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.iconBtn}>
+          {/* Back Button */}
+          <TouchableOpacity onPress={onClose} style={styles.iconBtn} activeOpacity={0.6}>
             <Text style={[styles.backArrow, { color: textColor }]}>‹</Text>
           </TouchableOpacity>
+
+          {/* Action Buttons */}
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn}>
-              <Text style={{ fontSize: 20 }}>{letter.isFavorite ? '⭐' : '☆'}</Text>
+            {/* Star / Favorite Button */}
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => onToggleFavorite && onToggleFavorite(letter.id)}
+              activeOpacity={0.6}
+            >
+              <Text style={{ fontSize: 22 }}>{letter.isFavorite ? '⭐' : '☆'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
+
+            {/* Edit Button */}
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={handleEdit}
+              activeOpacity={0.6}
+            >
               <Text style={{ fontSize: 18 }}>✏️</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn}>
+
+            {/* Delete Button */}
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={handleDelete}
+              activeOpacity={0.6}
+            >
               <Text style={{ fontSize: 18 }}>🗑️</Text>
             </TouchableOpacity>
           </View>
@@ -62,7 +106,7 @@ export default function LetterDetailModal({
 
         <View style={styles.content}>
           {isLocked ? (
-            /* LOCKED LETTER VIEW */
+            /* LOCKED VIEW */
             <View style={styles.lockedContainer}>
               <View style={styles.lockBadgeIcon}>
                 <Text style={{ fontSize: 36 }}>🔒</Text>
@@ -84,11 +128,15 @@ export default function LetterDetailModal({
                 Delivers {formattedDeliveryDate}
               </Text>
 
-              <TouchableOpacity style={styles.openEarlyBtn}>
+              <TouchableOpacity
+                style={styles.openEarlyBtn}
+                onPress={() =>
+                  Alert.alert('Open Early', 'This feature is currently locked until delivery date!')
+                }
+              >
                 <Text style={styles.openEarlyText}>Open early</Text>
               </TouchableOpacity>
 
-              {/* Category Pills */}
               <View style={styles.tagWrap}>
                 <View style={styles.tagPill}>
                   <Text style={styles.tagText}>{letter.category || 'School'}</Text>
@@ -100,17 +148,15 @@ export default function LetterDetailModal({
               </Text>
             </View>
           ) : (
-            /* UNLOCKED / DELIVERED VIEW */
+            /* UNLOCKED VIEW */
             <View style={styles.unlockedContainer}>
-              <Text style={styles.deliveredLabel}>📬 DELIVERED</Text>
-              <Text style={[styles.letterTitle, { color: textColor }]}>
-                {letter.title}
+              <Text style={{ fontSize: 12, fontWeight: 'bold', color: accentColor, marginBottom: 8 }}>
+                📬 DELIVERED
               </Text>
+              <Text style={[styles.letterTitle, { color: textColor }]}>{letter.title}</Text>
 
               <View style={[styles.letterCard, { backgroundColor: cardBg }]}>
-                <Text style={[styles.letterBody, { color: textColor }]}>
-                  {letter.content}
-                </Text>
+                <Text style={[styles.letterBody, { color: textColor }]}>{letter.content}</Text>
               </View>
 
               <View style={styles.tagPill}>
@@ -141,8 +187,6 @@ const styles = StyleSheet.create({
   iconBtn: { padding: 8 },
   backArrow: { fontSize: 32, fontWeight: '300' },
   content: { flex: 1, paddingHorizontal: 28, justifyContent: 'center' },
-  
-  // Locked View Styles
   lockedContainer: { alignItems: 'center' },
   lockBadgeIcon: {
     width: 80,
@@ -153,19 +197,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
   },
-  lockedTitle: {
-    fontSize: 24,
-    fontFamily: 'Georgia',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  lockedSubtitle: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
+  lockedTitle: { fontSize: 24, fontFamily: 'Georgia', fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
+  lockedSubtitle: { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
   timerPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -188,29 +221,11 @@ const styles = StyleSheet.create({
   },
   openEarlyText: { fontSize: 14, color: '#555555', fontWeight: '500' },
   tagWrap: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  tagPill: {
-    backgroundColor: '#EAE5DF',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-  },
+  tagPill: { backgroundColor: '#EAE5DF', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14, alignSelf: 'flex-start' },
   tagText: { fontSize: 12, color: '#444444' },
   writtenText: { fontSize: 12, marginTop: 10 },
-
-  // Unlocked View Styles
   unlockedContainer: { flex: 1, paddingTop: 20 },
-  deliveredLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#D9822B',
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
   letterTitle: { fontSize: 28, fontFamily: 'Georgia', fontWeight: 'bold', marginBottom: 20 },
-  letterCard: {
-    padding: 20,
-    borderRadius: 18,
-    marginBottom: 20,
-  },
+  letterCard: { padding: 20, borderRadius: 18, marginBottom: 20 },
   letterBody: { fontSize: 16, lineHeight: 26 },
 });

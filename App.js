@@ -71,7 +71,7 @@ function AppContent() {
   const [selectedLetter, setSelectedLetter] = useState(null);
 
   // Modal & Category Navigation States
-  const [activeGridModal, setActiveGridModal] = useState(null); // 'favorites' | 'categories' | 'achievements'
+  const [activeGridModal, setActiveGridModal] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Dynamic Settings
@@ -96,6 +96,26 @@ function AppContent() {
       saveLettersToStorage(letters);
     }
   }, [letters, isLoading]);
+
+  // Handlers for Letter Actions
+  const handleToggleFavorite = (letterId) => {
+    setLetters((prev) =>
+      prev.map((l) => (l.id === letterId ? { ...l, isFavorite: !l.isFavorite } : l))
+    );
+    setSelectedLetter((prev) =>
+      prev && prev.id === letterId ? { ...prev, isFavorite: !prev.isFavorite } : prev
+    );
+  };
+
+  const handleDeleteLetter = (letterId) => {
+    setLetters((prev) => prev.filter((l) => l.id !== letterId));
+    setSelectedLetter(null);
+  };
+
+  const handleEditLetter = (letter) => {
+    setSelectedLetter(null);
+    setActiveTab('write');
+  };
 
   const handleAddLetter = (newLetter) => {
     setLetters((prev) => [newLetter, ...prev]);
@@ -123,7 +143,6 @@ function AppContent() {
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
 
-  // Dynamic Categories List
   const categoryList = [
     { name: 'Goals', icon: '🎯' },
     { name: 'Personal', icon: '👤' },
@@ -205,7 +224,7 @@ function AppContent() {
         accentColor={accentColor}
       />
 
-      {/* Quick Action Category / Favorites Modal */}
+      {/* Grid Quick Action Modal */}
       <Modal
         visible={activeGridModal !== null}
         animationType="slide"
@@ -382,10 +401,13 @@ function AppContent() {
         </SafeAreaView>
       </Modal>
 
-      {/* Sealed / Unlocked Full Detail Screen Modal */}
+      {/* Letter Details View Modal */}
       <LetterDetailModal
         letter={selectedLetter}
         onClose={() => setSelectedLetter(null)}
+        onToggleFavorite={handleToggleFavorite}
+        onDeleteLetter={handleDeleteLetter}
+        onEditLetter={handleEditLetter}
         isDark={isDark}
         accentColor={accentColor}
       />
