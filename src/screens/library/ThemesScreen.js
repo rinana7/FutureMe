@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -36,6 +36,12 @@ export default function ThemesScreen({
   // Live preview state
   const [previewColor, setPreviewColor] = useState(accentColor);
 
+  // Measure Refs for Smooth Dragging
+  const boxRef = useRef(null);
+  const hueRef = useRef(null);
+  const boxLayout = useRef({ x: 0, y: 0, width: 280, height: 160 });
+  const hueLayout = useRef({ x: 0, width: 280 });
+
   // HSV to RGB Conversion
   const hsvToRgb = (h, s, v) => {
     s /= 100;
@@ -72,40 +78,52 @@ export default function ThemesScreen({
 
   const currentColorHex = getHexString();
 
-  // 2D Picker Box Gesture Handler
-  const boxPanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => handleBoxTouch(evt),
-    onPanResponderMove: (evt) => handleBoxTouch(evt),
-  });
+  // 2D Picker Box Smooth Gesture Handler
+  const updateBoxPos = (pageX, pageY) => {
+    if (!boxRef.current) return;
+    boxRef.current.measureInWindow((x, y, width, height) => {
+      const relX = Math.max(0, Math.min(pageX - x, width));
+      const relY = Math.max(0, Math.min(pageY - y, height));
 
-  const handleBoxTouch = (evt) => {
-    const { locationX, locationY } = evt.nativeEvent;
-    const width = 280;
-    const height = 160;
-
-    const clampedX = Math.max(0, Math.min(locationX, width));
-    const clampedY = Math.max(0, Math.min(locationY, height));
-
-    setSat(Math.round((clampedX / width) * 100));
-    setVal(Math.round((1 - clampedY / height) * 100));
+      setSat(Math.round((relX / width) * 100));
+      setVal(Math.round((1 - relY / height) * 100));
+    });
   };
 
-  // 1D Rainbow Hue Slider Gesture Handler
-  const huePanResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (evt) => handleHueTouch(evt),
-    onPanResponderMove: (evt) => handleHueTouch(evt),
-  });
+  const boxPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        updateBoxPos(evt.nativeEvent.pageX, evt.nativeEvent.pageY);
+      },
+      onPanResponderMove: (evt) => {
+        updateBoxPos(evt.nativeEvent.pageX, evt.nativeEvent.pageY);
+      },
+    })
+  ).current;
 
-  const handleHueTouch = (evt) => {
-    const { locationX } = evt.nativeEvent;
-    const width = 280;
-    const clampedX = Math.max(0, Math.min(locationX, width));
-    setHue(Math.round((clampedX / width) * 360));
+  // 1D Hue Slider Smooth Gesture Handler
+  const updateHuePos = (pageX) => {
+    if (!hueRef.current) return;
+    hueRef.current.measureInWindow((x, y, width) => {
+      const relX = Math.max(0, Math.min(pageX - x, width));
+      setHue(Math.round((relX / width) * 360));
+    });
   };
+
+  const huePanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        updateHuePos(evt.nativeEvent.pageX);
+      },
+      onPanResponderMove: (evt) => {
+        updateHuePos(evt.nativeEvent.pageX);
+      },
+    })
+  ).current;
 
   const handleRandomPalette = () => {
     setHue(Math.floor(Math.random() * 360));
@@ -233,10 +251,11 @@ export default function ThemesScreen({
               placeholderTextColor="#AAAAAA"
             />
 
-            {/* GOOGLE-STYLE COLOR PICKER */}
+            {/* COLOR PICKER CONTROLS */}
             <View style={styles.pickerWrapper}>
               {/* 2D SATURATION & VALUE CANVAS */}
               <View
+                ref={boxRef}
                 style={[
                   styles.gradientBox,
                   { backgroundColor: `hsl(${hue}, 100%, 50%)` },
@@ -248,12 +267,14 @@ export default function ThemesScreen({
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
                 />
                 <LinearGradient
                   colors={['transparent', '#000000']}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 0, y: 1 }}
                   style={StyleSheet.absoluteFillObject}
+                  pointerEvents="none"
                 />
                 <View
                   style={[
@@ -263,16 +284,22 @@ export default function ThemesScreen({
                       top: (1 - val / 100) * 160 - 12,
                     },
                   ]}
+                  pointerEvents="none"
                 />
               </View>
 
               {/* HUE RAINBOW SLIDER */}
-              <View style={styles.hueBarWrapper} {...huePanResponder.panHandlers}>
+              <View
+                ref={hueRef}
+                style={styles.hueBarWrapper}
+                {...huePanResponder.panHandlers}
+              >
                 <LinearGradient
                   colors={rainbowColors}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.hueGradientBar}
+                  pointerEvents="none"
                 />
                 <View
                   style={[
@@ -282,6 +309,7 @@ export default function ThemesScreen({
                       backgroundColor: `hsl(${hue}, 100%, 50%)`,
                     },
                   ]}
+                  pointerEvents="none"
                 />
               </View>
 
@@ -336,7 +364,7 @@ export default function ThemesScreen({
               </TouchableOpacity>
             </View>
 
-            {/* MODAL BOTTOM ACTIONS */}
+            {/* MODAL ACTIONS */}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
@@ -421,7 +449,7 @@ const styles = StyleSheet.create({
   gradientBox: { width: 280, height: 160, borderRadius: 16, overflow: 'hidden', position: 'relative' },
   pickerHandle: { width: 24, height: 24, borderRadius: 12, borderWidth: 3, borderColor: '#FFFFFF', position: 'absolute' },
 
-  hueBarWrapper: { width: 280, height: 20, marginTop: 16, justifyContent: 'center', position: 'relative' },
+  hueBarWrapper: { width: 280, height: 24, marginTop: 16, justifyContent: 'center', position: 'relative' },
   hueGradientBar: { height: 12, borderRadius: 6, width: '100%' },
   hueHandle: { width: 20, height: 20, borderRadius: 10, borderWidth: 3, borderColor: '#FFFFFF', position: 'absolute', elevation: 3 },
 
