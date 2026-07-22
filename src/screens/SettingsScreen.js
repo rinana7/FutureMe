@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,13 @@ import {
   Alert,
 } from 'react-native';
 
+// Import sub-screens from library folder
+import ThemesScreen from './library/ThemesScreen';
+import CategoriesScreen from './library/CategoriesScreen';
+import FavoritesScreen from './library/FavoritesScreen';
+import AchievementsScreen from './library/AchievementsScreen';
+import RecentlyDeletedScreen from './library/RecentlyDeletedScreen';
+
 export default function SettingsScreen({
   letters = [],
   setLetters,
@@ -15,9 +22,53 @@ export default function SettingsScreen({
   setThemeMode,
   accentColor = '#D9822B',
   setAccentColor,
-  onNavigate, // Callback for navigating to sub-screens like 'Themes', 'Categories', etc.
   onBack,
 }) {
+  const [activeSubScreen, setActiveSubScreen] = useState(null);
+
+  // Render Sub-Screens inside Settings if selected
+  if (activeSubScreen === 'themes') {
+    return (
+      <ThemesScreen
+        onBack={() => setActiveSubScreen(null)}
+        accentColor={accentColor}
+        setAccentColor={setAccentColor}
+      />
+    );
+  }
+  if (activeSubScreen === 'categories') {
+    return (
+      <CategoriesScreen
+        onBack={() => setActiveSubScreen(null)}
+        accentColor={accentColor}
+      />
+    );
+  }
+  if (activeSubScreen === 'favorites') {
+    return (
+      <FavoritesScreen
+        onBack={() => setActiveSubScreen(null)}
+        accentColor={accentColor}
+      />
+    );
+  }
+  if (activeSubScreen === 'achievements') {
+    return (
+      <AchievementsScreen
+        onBack={() => setActiveSubScreen(null)}
+        accentColor={accentColor}
+      />
+    );
+  }
+  if (activeSubScreen === 'deleted') {
+    return (
+      <RecentlyDeletedScreen
+        onBack={() => setActiveSubScreen(null)}
+        accentColor={accentColor}
+      />
+    );
+  }
+
   const isDark = themeMode === 'Dark';
 
   // Dynamic Theme Colors
@@ -28,23 +79,23 @@ export default function SettingsScreen({
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
 
   const accentColors = [
-    '#007AFF', // Blue
-    '#30B0C7', // Cyan
-    '#8E44AD', // Purple
-    '#FF4F9A', // Pink
-    '#E74C3C', // Red
-    '#FF7A00', // Orange
-    '#F1C40F', // Yellow
-    '#2ECC71', // Green
-    '#1ABC9C', // Teal
-    '#D9822B', // Warm Amber (Default)
-    '#2C3E50', // Dark Charcoal
+    '#007AFF',
+    '#30B0C7',
+    '#8E44AD',
+    '#FF4F9A',
+    '#E74C3C',
+    '#FF7A00',
+    '#F1C40F',
+    '#2ECC71',
+    '#1ABC9C',
+    '#D9822B',
+    '#2C3E50',
   ];
 
   const handleClearAllData = () => {
     Alert.alert(
       'Delete All Letters',
-      'Are you sure you want to permanently delete all your letters and reminders? This action cannot be undone.',
+      'Are you sure you want to permanently delete all your letters? This action cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -169,7 +220,7 @@ export default function SettingsScreen({
             <React.Fragment key={item.id}>
               <TouchableOpacity
                 style={styles.libraryRow}
-                onPress={() => (onNavigate ? onNavigate(item.id) : null)}
+                onPress={() => setActiveSubScreen(item.id)}
                 activeOpacity={0.6}
               >
                 <View style={styles.libraryLeft}>
