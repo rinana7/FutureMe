@@ -25,35 +25,41 @@ import WriteScreen from './src/screens/WriteScreen';
 import ArchiveScreen from './src/screens/ArchiveScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import BottomNavBar from './src/components/BottomNavBar';
+import LetterDetailModal from './src/components/LetterDetailModal';
 
 const INITIAL_SAMPLE_LETTERS = [
   {
     id: '1',
-    title: 'Message to Me in 5 Years',
+    title: 'On the eve of graduation',
     type: 'future',
-    category: 'Future',
+    category: 'School',
     isFavorite: true,
     isArchived: false,
-    unlockDate: '2031-07-20T00:00:00.000Z',
-    content: 'Hey future self, hope you are crushing your coding goals!',
+    createdAt: '2026-06-12T00:00:00.000Z',
+    unlockDate: '2026-07-23T00:00:00.000Z',
+    content: 'This letter stays locked until it arrives. A message from your past self awaits.',
   },
   {
     id: '2',
-    title: 'My Goals for this Summer',
-    type: 'reminder',
+    title: 'Happy birthday, old friend',
+    type: 'delivered',
     category: 'Personal',
-    isFavorite: false,
+    isFavorite: true,
     isArchived: false,
-    content: 'Hey self! Remember to keep working on your React Native projects.',
+    createdAt: '2025-06-17T00:00:00.000Z',
+    unlockDate: '2026-06-17T00:00:00.000Z',
+    content: 'If you\'re reading this, another year has passed. I hope it was full. I hope you were kind to yourself.',
   },
   {
     id: '3',
-    title: 'Dream Job & Career Plan',
-    type: 'reminder',
-    category: 'Goals',
-    isFavorite: true,
+    title: 'Message to Me in 5 Years',
+    type: 'future',
+    category: 'Future',
+    isFavorite: false,
     isArchived: false,
-    content: 'Keep focusing on building great user experiences!',
+    createdAt: '2026-07-20T00:00:00.000Z',
+    unlockDate: '2031-07-20T00:00:00.000Z',
+    content: 'Hey future self, hope you are crushing your coding goals!',
   },
 ];
 
@@ -66,7 +72,7 @@ function AppContent() {
 
   // Modal & Category Navigation States
   const [activeGridModal, setActiveGridModal] = useState(null); // 'favorites' | 'categories' | 'achievements'
-  const [selectedCategory, setSelectedCategory] = useState(null); // Stores tapped category name (e.g., 'Goals')
+  const [selectedCategory, setSelectedCategory] = useState(null);
 
   // Dynamic Settings
   const [themeMode, setThemeMode] = useState('Light');
@@ -117,7 +123,7 @@ function AppContent() {
   const subTextColor = isDark ? '#AAAAAA' : '#777777';
   const borderColor = isDark ? '#2A2A2A' : '#EAE5DF';
 
-  // Dynamic Categories List based on existing letters
+  // Dynamic Categories List
   const categoryList = [
     { name: 'Goals', icon: '🎯' },
     { name: 'Personal', icon: '👤' },
@@ -199,14 +205,13 @@ function AppContent() {
         accentColor={accentColor}
       />
 
-      {/* Grid Quick Action Modal */}
+      {/* Quick Action Category / Favorites Modal */}
       <Modal
         visible={activeGridModal !== null}
         animationType="slide"
         onRequestClose={handleCloseGridModal}
       >
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: bgColor }]}>
-          {/* Top Bar Navigation */}
           <View style={styles.modalTopBar}>
             <TouchableOpacity
               onPress={() => {
@@ -243,7 +248,10 @@ function AppContent() {
                       <TouchableOpacity
                         key={l.id}
                         style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}
-                        onPress={() => setSelectedLetter(l)}
+                        onPress={() => {
+                          handleCloseGridModal();
+                          setSelectedLetter(l);
+                        }}
                       >
                         <Text style={{ fontSize: 18, marginRight: 12 }}>⭐</Text>
                         <View style={{ flex: 1 }}>
@@ -262,7 +270,6 @@ function AppContent() {
             {activeGridModal === 'categories' && (
               <View>
                 {selectedCategory ? (
-                  // FILTERED LETTERS FOR SELECTED CATEGORY
                   <View>
                     <Text style={[styles.modalTitle, { color: textColor }]}>
                       {selectedCategory}
@@ -288,7 +295,10 @@ function AppContent() {
                           <TouchableOpacity
                             key={l.id}
                             style={[styles.listItem, { backgroundColor: cardBg, borderColor }]}
-                            onPress={() => setSelectedLetter(l)}
+                            onPress={() => {
+                              handleCloseGridModal();
+                              setSelectedLetter(l);
+                            }}
                           >
                             <Text style={{ fontSize: 18, marginRight: 12 }}>📜</Text>
                             <View style={{ flex: 1 }}>
@@ -305,7 +315,6 @@ function AppContent() {
                     )}
                   </View>
                 ) : (
-                  // CATEGORIES SELECTION LIST
                   <View>
                     <Text style={[styles.modalTitle, { color: textColor }]}>Categories</Text>
                     <Text style={[styles.modalSub, { color: subTextColor }]}>
@@ -373,34 +382,13 @@ function AppContent() {
         </SafeAreaView>
       </Modal>
 
-      {/* Letter Details View Modal */}
-      <Modal
-        visible={selectedLetter !== null}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setSelectedLetter(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: cardBg, borderColor }]}>
-            <Text style={[styles.modalBadge, { color: accentColor }]}>
-              {selectedLetter?.category || 'Personal'}
-            </Text>
-            <Text style={[styles.letterTitle, { color: textColor }]}>
-              {selectedLetter?.title}
-            </Text>
-            <Text style={[styles.letterBody, { color: subTextColor }]}>
-              {selectedLetter?.content}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.closeBtn, { backgroundColor: accentColor }]}
-              onPress={() => setSelectedLetter(null)}
-            >
-              <Text style={styles.closeBtnText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* Sealed / Unlocked Full Detail Screen Modal */}
+      <LetterDetailModal
+        letter={selectedLetter}
+        onClose={() => setSelectedLetter(null)}
+        isDark={isDark}
+        accentColor={accentColor}
+      />
     </View>
   );
 }
@@ -462,25 +450,4 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 12,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-  },
-  modalBadge: {
-    fontWeight: 'bold',
-    fontSize: 11,
-    marginBottom: 6,
-    textTransform: 'uppercase',
-  },
-  letterTitle: { fontSize: 22, fontFamily: 'Georgia', fontWeight: 'bold', marginBottom: 10 },
-  letterBody: { fontSize: 15, lineHeight: 22, marginBottom: 20 },
-  closeBtn: { paddingVertical: 12, borderRadius: 12, alignItems: 'center' },
-  closeBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 15 },
 });
