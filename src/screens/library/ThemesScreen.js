@@ -8,7 +8,9 @@ import {
   TextInput,
   Modal,
   Alert,
+  PanResponder,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ThemesScreen({
   onBack,
@@ -23,10 +25,93 @@ export default function ThemesScreen({
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newThemeName, setNewThemeName] = useState('');
-  const [newThemeColor, setNewThemeColor] = useState('#007AFF');
 
-  // Preview state dynamically tracks selected or edited color
+  // Color Picker HSV States
+  const [hue, setHue] = useState(15); // 0 - 360
+  const [sat, setSat] = useState(85); // 0 - 100
+  const [val, setVal] = useState(90); // 0 - 100
+  const [colorMode, setColorMode] = useState('Hex');
+  const [showModeDropdown, setShowModeDropdown] = useState(false);
+
+  // Live preview state
   const [previewColor, setPreviewColor] = useState(accentColor);
+
+  // HSV to RGB Conversion
+  const hsvToRgb = (h, s, v) => {
+    s /= 100;
+    v /= 100;
+    let c = v * s;
+    let x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+    let m = v - c;
+    let r = 0, g = 0, b = 0;
+
+    if (0 <= h && h < 60) { r = c; g = x; b = 0; }
+    else if (60 <= h && h < 120) { r = x; g = c; b = 0; }
+    else if (120 <= h && h < 180) { r = 0; g = c; b = x; }
+    else if (180 <= h && h < 240) { r = 0; g = x; b = c; }
+    else if (240 <= h && h < 300) { r = x; g = 0; b = c; }
+    else if (300 <= h && h <= 360) { r = c; g = 0; b = x; }
+
+    return {
+      r: Math.round((r + m) * 255),
+      g: Math.round((g + m) * 255),
+      b: Math.round((b + m) * 255),
+    };
+  };
+
+  const getRgbString = () => {
+    const { r, g, b } = hsvToRgb(hue, sat, val);
+    return `rgb(${r}, ${g}, ${b})`;
+  };
+
+  const getHexString = () => {
+    const { r, g, b } = hsvToRgb(hue, sat, val);
+    const toHex = (n) => n.toString(16).padStart(2, '0').toUpperCase();
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  };
+
+  const currentColorHex = getHexString();
+
+  // 2D Picker Box Gesture Handler
+  const boxPanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => handleBoxTouch(evt),
+    onPanResponderMove: (evt) => handleBoxTouch(evt),
+  });
+
+  const handleBoxTouch = (evt) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    const width = 280;
+    const height = 160;
+
+    const clampedX = Math.max(0, Math.min(locationX, width));
+    const clampedY = Math.max(0, Math.min(locationY, height));
+
+    setSat(Math.round((clampedX / width) * 100));
+    setVal(Math.round((1 - clampedY / height) * 100));
+  };
+
+  // 1D Rainbow Hue Slider Gesture Handler
+  const huePanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    onPanResponderGrant: (evt) => handleHueTouch(evt),
+    onPanResponderMove: (evt) => handleHueTouch(evt),
+  });
+
+  const handleHueTouch = (evt) => {
+    const { locationX } = evt.nativeEvent;
+    const width = 280;
+    const clampedX = Math.max(0, Math.min(locationX, width));
+    setHue(Math.round((clampedX / width) * 360));
+  };
+
+  const handleRandomPalette = () => {
+    setHue(Math.floor(Math.random() * 360));
+    setSat(Math.floor(Math.random() * 40) + 60);
+    setVal(Math.floor(Math.random() * 40) + 60);
+  };
 
   const handleAddTheme = () => {
     if (!newThemeName.trim()) {
@@ -34,27 +119,28 @@ export default function ThemesScreen({
       return;
     }
 
-    // Basic Hex color validation
-    const hexRegex = /^#([0-9A-F]{3}){1,2}$/i;
-    if (!hexRegex.test(newThemeColor.trim())) {
-      Alert.alert('Invalid Color', 'Please enter a valid Hex color code (e.g., #FF5733).');
-      return;
-    }
-
     const createdTheme = {
       name: newThemeName.trim(),
-      color: newThemeColor.trim(),
+      color: currentColorHex,
     };
 
     setThemes([...themes, createdTheme]);
     setPreviewColor(createdTheme.color);
     if (setAccentColor) setAccentColor(createdTheme.color);
 
-    // Reset Modal
     setNewThemeName('');
-    setNewThemeColor('#007AFF');
     setModalVisible(false);
   };
+
+  const rainbowColors = [
+    '#FF0000',
+    '#FFFF00',
+    '#00FF00',
+    '#00FFFF',
+    '#0000FF',
+    '#FF00FF',
+    '#FF0000',
+  ];
 
   return (
     <View style={styles.container}>
@@ -75,7 +161,7 @@ export default function ThemesScreen({
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <Text style={styles.subtitle}>Make Future Letter feel like yours</Text>
 
-        {/* YOUR THEMES LIST */}
+        {/* YOUR THEMES */}
         <Text style={styles.sectionHeader}>YOUR THEMES</Text>
         {themes.map((theme) => {
           const isActive = previewColor === theme.color;
@@ -109,7 +195,7 @@ export default function ThemesScreen({
           );
         })}
 
-        {/* LIVE PREVIEW SECTION */}
+        {/* LIVE PREVIEW */}
         <Text style={[styles.sectionHeader, { marginTop: 24 }]}>LIVE PREVIEW</Text>
         <View style={styles.previewCard}>
           <View style={styles.previewHeader}>
@@ -137,35 +223,120 @@ export default function ThemesScreen({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>Create Custom Theme</Text>
-            <Text style={styles.modalSub}>
-              Copy a Hex/RGB code from Google Picker and paste it below.
-            </Text>
 
-            <Text style={styles.inputLabel}>Theme Name</Text>
+            <Text style={[styles.inputLabel, { marginTop: 10 }]}>Theme Name</Text>
             <TextInput
               style={styles.textInput}
-              placeholder="e.g. Neon Pulse"
+              placeholder="e.g. Sunset Amber"
               value={newThemeName}
               onChangeText={setNewThemeName}
               placeholderTextColor="#AAAAAA"
             />
 
-            <Text style={styles.inputLabel}>Hex Color Code</Text>
-            <View style={styles.colorInputRow}>
-              <View style={[styles.colorPreviewDot, { backgroundColor: newThemeColor }]} />
-              <TextInput
-                style={[styles.textInput, { flex: 1, marginBottom: 0 }]}
-                placeholder="#007AFF"
-                value={newThemeColor}
-                onChangeText={(val) => {
-                  setNewThemeColor(val);
-                  setPreviewColor(val);
-                }}
-                autoCapitalize="characters"
-                placeholderTextColor="#AAAAAA"
-              />
+            {/* GOOGLE-STYLE COLOR PICKER */}
+            <View style={styles.pickerWrapper}>
+              {/* 2D SATURATION & VALUE CANVAS */}
+              <View
+                style={[
+                  styles.gradientBox,
+                  { backgroundColor: `hsl(${hue}, 100%, 50%)` },
+                ]}
+                {...boxPanResponder.panHandlers}
+              >
+                <LinearGradient
+                  colors={['#FFFFFF', 'transparent']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <LinearGradient
+                  colors={['transparent', '#000000']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View
+                  style={[
+                    styles.pickerHandle,
+                    {
+                      left: (sat / 100) * 280 - 12,
+                      top: (1 - val / 100) * 160 - 12,
+                    },
+                  ]}
+                />
+              </View>
+
+              {/* HUE RAINBOW SLIDER */}
+              <View style={styles.hueBarWrapper} {...huePanResponder.panHandlers}>
+                <LinearGradient
+                  colors={rainbowColors}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.hueGradientBar}
+                />
+                <View
+                  style={[
+                    styles.hueHandle,
+                    {
+                      left: (hue / 360) * 280 - 10,
+                      backgroundColor: `hsl(${hue}, 100%, 50%)`,
+                    },
+                  ]}
+                />
+              </View>
+
+              {/* VALUE & FORMAT INPUT ROW */}
+              <View style={styles.valueRowContainer}>
+                <View style={styles.valueLeft}>
+                  <View style={[styles.activeColorCircle, { backgroundColor: currentColorHex }]} />
+                  <Text style={styles.colorCodeText}>
+                    {colorMode === 'Hex' ? currentColorHex : getRgbString()}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.dropdownBtn}
+                  onPress={() => setShowModeDropdown(!showModeDropdown)}
+                >
+                  <Text style={styles.dropdownText}>{colorMode}</Text>
+                  <Text style={styles.dropdownChevron}>⌄</Text>
+                </TouchableOpacity>
+
+                {showModeDropdown && (
+                  <View style={styles.dropdownMenu}>
+                    <TouchableOpacity
+                      style={styles.dropdownOption}
+                      onPress={() => {
+                        setColorMode('Hex');
+                        setShowModeDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownOptionText}>Hex</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.dropdownOption}
+                      onPress={() => {
+                        setColorMode('RGB');
+                        setShowModeDropdown(false);
+                      }}
+                    >
+                      <Text style={styles.dropdownOptionText}>RGB</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
+              {/* RANDOM PALETTE BUTTON */}
+              <TouchableOpacity
+                style={styles.randomBtn}
+                onPress={handleRandomPalette}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.randomBtnText}>Random palette</Text>
+              </TouchableOpacity>
             </View>
 
+            {/* MODAL BOTTOM ACTIONS */}
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={styles.cancelBtn}
@@ -174,7 +345,7 @@ export default function ThemesScreen({
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.saveBtn, { backgroundColor: accentColor }]}
+                style={[styles.saveBtn, { backgroundColor: currentColorHex }]}
                 onPress={handleAddTheme}
               >
                 <Text style={styles.saveBtnText}>Save Theme</Text>
@@ -237,15 +408,40 @@ const styles = StyleSheet.create({
   previewFooter: { marginTop: 16 },
   previewActionBtn: { paddingVertical: 10, borderRadius: 12, alignItems: 'center' },
   previewActionText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 20 },
-  modalContainer: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 24 },
+
+  /* Modal Styles */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+  modalContainer: { backgroundColor: '#FFFFFF', padding: 20, borderRadius: 24, width: 320 },
   modalTitle: { fontSize: 20, fontFamily: 'Georgia', fontWeight: 'bold', color: '#2B2B2B' },
-  modalSub: { fontSize: 12, color: '#777777', marginTop: 4, marginBottom: 16 },
   inputLabel: { fontSize: 12, fontWeight: '700', color: '#2B2B2B', marginBottom: 6 },
-  textInput: { borderWidth: 1, borderColor: '#EAE5DF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, marginBottom: 14, fontSize: 14, color: '#2B2B2B' },
-  colorInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
-  colorPreviewDot: { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: '#EAE5DF' },
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  textInput: { borderWidth: 1, borderColor: '#EAE5DF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 16, fontSize: 14, color: '#2B2B2B' },
+
+  /* Color Picker Controls */
+  pickerWrapper: { alignItems: 'center' },
+  gradientBox: { width: 280, height: 160, borderRadius: 16, overflow: 'hidden', position: 'relative' },
+  pickerHandle: { width: 24, height: 24, borderRadius: 12, borderWidth: 3, borderColor: '#FFFFFF', position: 'absolute' },
+
+  hueBarWrapper: { width: 280, height: 20, marginTop: 16, justifyContent: 'center', position: 'relative' },
+  hueGradientBar: { height: 12, borderRadius: 6, width: '100%' },
+  hueHandle: { width: 20, height: 20, borderRadius: 10, borderWidth: 3, borderColor: '#FFFFFF', position: 'absolute', elevation: 3 },
+
+  valueRowContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: 280, marginTop: 16, borderWidth: 1, borderColor: '#EAE5DF', borderRadius: 14, padding: 8, position: 'relative' },
+  valueLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  activeColorCircle: { width: 24, height: 24, borderRadius: 12 },
+  colorCodeText: { fontSize: 14, fontWeight: '600', color: '#2B2B2B' },
+
+  dropdownBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#F5F5F5' },
+  dropdownText: { fontSize: 13, fontWeight: '600', color: '#2B2B2B' },
+  dropdownChevron: { fontSize: 12, color: '#777777' },
+
+  dropdownMenu: { position: 'absolute', right: 8, top: 44, backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#EAE5DF', zIndex: 10, elevation: 4 },
+  dropdownOption: { paddingHorizontal: 16, paddingVertical: 8 },
+  dropdownOptionText: { fontSize: 13, fontWeight: '600', color: '#2B2B2B' },
+
+  randomBtn: { width: 280, paddingVertical: 10, borderWidth: 1, borderColor: '#EAE5DF', borderRadius: 12, alignItems: 'center', marginTop: 14 },
+  randomBtnText: { fontSize: 14, fontWeight: '600', color: '#2B2B2B' },
+
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 20, width: '100%' },
   cancelBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
   cancelBtnText: { color: '#777777', fontWeight: '600', fontSize: 14 },
   saveBtn: { paddingVertical: 10, paddingHorizontal: 16, borderRadius: 12 },
